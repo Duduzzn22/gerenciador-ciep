@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Despensa Digital</title>
+
+<!-- Faz o app se comportar como aplicativo de verdade quando adicionado à
+     tela inicial do celular (sem barra de endereço nem aparência de site) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F6F5C">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Despensa Digital">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F6F5;
+    --surface:#FFFFFF;
+    --surface-2:#EDF1EF;
+    --ink:#1F2A28;
+    --muted:#5B6B67;
+    --line:#DCE3E1;
+    --accent:#1F6F5C;
+    --accent-ink:#0F3E33;
+    --accent-soft:#E4F0EC;
+    --warn:#A8660F;
+    --warn-soft:#FBEDD8;
+    --crit:#B3392C;
+    --crit-soft:#FBE4E1;
+    --shadow: 0 1px 2px rgba(20,30,28,0.06), 0 4px 14px rgba(20,30,28,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121716; --surface:#1B2422; --surface-2:#212B29; --ink:#E9EEEC; --muted:#9BAAA6;
+      --line:#2B3634; --accent:#4FBF9E; --accent-ink:#DFF6EE; --accent-soft:#1E3530;
+      --warn:#E0A542; --warn-soft:#3A2C15; --crit:#E2695C; --crit-soft:#3A211D;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121716; --surface:#1B2422; --surface-2:#212B29; --ink:#E9EEEC; --muted:#9BAAA6;
+    --line:#2B3634; --accent:#4FBF9E; --accent-ink:#DFF6EE; --accent-soft:#1E3530;
+    --warn:#E0A542; --warn-soft:#3A2C15; --crit:#E2695C; --crit-soft:#3A211D;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.35);
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Public Sans', system-ui, -apple-system, sans-serif; -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  #root{ max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding-bottom:84px; position:relative; }
+  .label{ font-family:'Barlow Condensed', system-ui, sans-serif; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; }
+  .topbar{ position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--line); padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .brand{ display:flex; flex-direction:column; gap:2px; }
+  .brand-name{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:700; font-size:22px; line-height:1; color:var(--accent-ink); }
+  .brand-sub{ font-size:12px; color:var(--muted); }
+  .who-chip{ display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:7px 12px; font-size:13px; font-weight:600; color:var(--ink); cursor:pointer; }
+  .who-chip svg{ width:14px; height:14px; stroke:var(--muted); flex:none; }
+  .content{ flex:1; padding:14px 16px 8px; display:flex; flex-direction:column; gap:14px; }
+  .section-title{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:18px; letter-spacing:0.01em; color:var(--ink); }
+  .pending-banner{ background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent); border-radius:0; padding:9px 16px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .pending-banner::before{ content:''; width:8px; height:8px; border-radius:50%; background:var(--accent); flex:none; animation: pulse 1.2s ease-in-out infinite; }
+  .alert-banner{ padding:9px 16px; font-size:13px; font-weight:700; text-align:left; cursor:pointer; font-family:inherit; border-width:1px 0 1px 4px; border-style:solid; width:100%; }
+  .alert-banner.critico{ border-color:var(--crit); background:var(--crit-soft); color:var(--crit); }
+  .alert-banner.baixo{ border-color:var(--warn); background:var(--warn-soft); color:var(--warn); }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
+  .search-row{ display:flex; gap:8px; }
+  .search-input{ flex:1; border:1px solid var(--line); background:var(--surface); border-radius:10px; padding:10px 12px; font-size:15px; color:var(--ink); font-family:inherit; }
+  .search-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .chip-row{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
+  .chip-row::-webkit-scrollbar{ display:none; }
+  .chip{ flex:none; border:1px solid var(--line); background:var(--surface); color:var(--muted); border-radius:999px; padding:7px 13px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip.low[aria-pressed="true"]{ background:var(--warn); border-color:var(--warn); color:#1B1200; }
+  .cat-group{ display:flex; flex-direction:column; gap:10px; }
+  .cat-header{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:15px; color:var(--accent-ink); text-transform:uppercase; letter-spacing:0.04em; padding-bottom:6px; border-bottom:2px solid var(--accent-soft); }
+  .cat-count{ color:var(--muted); font-weight:500; text-transform:none; letter-spacing:normal; }
+  .item-list{ display:flex; flex-direction:column; gap:10px; }
+  .item-card{ background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--line); border-radius:12px; padding:12px 13px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; }
+  .item-card[data-status="baixo"]{ border-left-color:var(--warn); }
+  .item-card[data-status="critico"]{ border-left-color:var(--crit); }
+  .item-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .item-name{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:17px; }
+  .item-qty{ text-align:right; flex:none; }
+  .item-qty b{ font-size:19px; font-weight:700; }
+  .item-qty span{ font-size:12px; color:var(--muted); display:block; }
+  .status-tag{ display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:2px 7px; text-transform:uppercase; letter-spacing:0.03em; }
+  .status-tag.ok{ background:var(--accent-soft); color:var(--accent-ink); }
+  .status-tag.baixo{ background:var(--warn-soft); color:var(--warn); }
+  .status-tag.critico{ background:var(--crit-soft); color:var(--crit); }
+  .item-actions{ display:flex; gap:8px; }
+  .qtybtn{ flex:1; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); border-radius:8px; padding:8px 0; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .qtybtn:disabled{ opacity:.5; }
+  .qtybtn.entrada{ color:var(--accent); }
+  .qtybtn.saida{ color:var(--crit); }
+  .qtybtn svg{ width:16px; height:16px; stroke:currentColor; }
+  .empty-note{ color:var(--muted); font-size:14px; padding:20px 4px; text-align:center; }
+  .form{ display:flex; flex-direction:column; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+  .field-hint{ font-size:11px; color:var(--muted); }
+  select, input[type="text"], input[type="number"], input[type="email"], input[type="password"]{ border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; padding:11px 12px; font-size:16px; font-family:inherit; width:100%; }
+  select:focus, input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  select:disabled, input:disabled{ opacity:.6; }
+  .qty-row{ display:flex; align-items:center; gap:8px; }
+  .stepper{ width:44px; height:44px; border-radius:10px; border:1px solid var(--line); background:var(--surface-2); font-size:20px; font-weight:700; color:var(--ink); flex:none; cursor:pointer; }
+  .stepper:disabled{ opacity:.5; }
+  .btn{ border:none; border-radius:12px; padding:13px 16px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary[data-kind="saida"]{ background:var(--crit); }
+  .btn-primary:disabled{ opacity:0.5; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+  .btn-ghost:disabled{ opacity:.5; }
+  .picked-item{ display:flex; align-items:center; justify-content:space-between; background:var(--surface-2); border-radius:10px; padding:10px 12px; font-size:14px; }
+  .picked-item b{ font-family:'Barlow Condensed'; font-weight:600; font-size:16px; }
+  .day-group{ display:flex; flex-direction:column; gap:8px; }
+  .day-header{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  .hist-list{ display:flex; flex-direction:column; gap:8px; }
+  .hist-time{ font-size:12px; font-weight:700; color:var(--muted); width:40px; flex:none; text-align:center; font-variant-numeric:tabular-nums; line-height:1.15; }
+  .hist-row{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .hist-icon{ width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .hist-icon.entrada{ background:var(--accent-soft); }
+  .hist-icon.saida{ background:var(--crit-soft); }
+  .hist-icon svg{ width:16px; height:16px; }
+  .hist-icon.entrada svg{ stroke:var(--accent-ink); }
+  .hist-icon.saida svg{ stroke:var(--crit); }
+  .hist-main{ flex:1; min-width:0; }
+  .hist-title{ font-size:14px; font-weight:600; }
+  .hist-title.is-undone{ text-decoration:line-through; color:var(--muted); }
+  .hist-sub{ font-size:12px; color:var(--muted); }
+  .hist-side{ display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex:none; }
+  .hist-qty{ font-weight:700; font-size:15px; flex:none; }
+  .hist-qty.saida{ color:var(--crit); }
+  .hist-qty.entrada{ color:var(--accent-ink); }
+  .undo-tag{ display:inline-block; margin-left:5px; border-radius:6px; padding:1px 5px; background:var(--warn-soft); color:var(--warn); font-size:10px; font-weight:700; text-decoration:none; vertical-align:middle; text-transform:uppercase; }
+  .undo-btn{ min-height:28px; border:1px solid var(--line); background:var(--surface-2); color:var(--muted); border-radius:7px; padding:4px 8px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .undo-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .overlay{ position:fixed; inset:0; background:rgba(15,25,22,0.45); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
+  .modal{ background:var(--surface); border-radius:16px 16px 0 0; padding:18px 16px 24px; width:100%; max-width:520px; display:flex; flex-direction:column; gap:12px; max-height:88vh; overflow-y:auto; }
+  .modal-title{ font-family:'Barlow Condensed'; font-weight:700; font-size:20px; }
+  .profile-list{ display:flex; flex-direction:column; gap:8px; }
+  .cad-row{ display:flex; align-items:center; justify-content:space-between; width:100%; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); border-radius:10px; padding:12px 14px; font-size:15px; font-weight:600; text-align:left; }
+  .categoria-row small{ color:var(--muted); font-size:12px; font-weight:600; }
+  .categoria-row .undo-btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .grupo-row{ padding-top:2px; }
+  .tabbar{ position:fixed; left:0; right:0; bottom:0; z-index:30; background:var(--surface); border-top:1px solid var(--line); display:flex; justify-content:center; padding-bottom:env(safe-area-inset-bottom); }
+  .tabbar-inner{ max-width:520px; width:100%; display:flex; }
+  .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; padding:8px 2px 7px; background:none; border:none; color:var(--muted); cursor:pointer; }
+  .tab svg{ width:20px; height:20px; stroke:var(--muted); }
+  .tab span{ font-size:10px; font-weight:600; white-space:nowrap; }
+  .tab[aria-current="true"]{ color:var(--accent); }
+  .tab[aria-current="true"] svg{ stroke:var(--accent); }
+  .toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:96px; z-index:60; background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:10px; font-size:14px; font-weight:600; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; max-width:90%; text-align:center; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .auth-wrap{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px; }
+  .auth-box{ width:100%; max-width:380px; background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px 20px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; }
+  .auth-title{ font-family:'Barlow Condensed'; font-weight:700; font-size:26px; color:var(--accent-ink); text-align:center; }
+  .auth-sub{ font-size:13px; color:var(--muted); text-align:center; margin-top:-8px; }
+  .auth-tabs{ display:flex; gap:6px; background:var(--surface-2); border-radius:10px; padding:4px; }
+  .auth-tab{ flex:1; border:none; background:none; padding:9px 0; border-radius:8px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; font-family:inherit; }
+  .auth-tab[aria-pressed="true"]{ background:var(--surface); color:var(--accent-ink); box-shadow:var(--shadow); }
+  .auth-error{ background:var(--crit-soft); color:var(--crit); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; }
+  .auth-info{ background:var(--accent-soft); color:var(--accent-ink); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; }
+  .loading-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px; }
+  @media print{ .topbar,.tabbar,.toast,.alert-banner,.pending-banner,.search-row,.chip-row,.item-actions,.btn{ display:none !important; } #root{ max-width:none; padding:0; } .content{ padding:0; } body{ background:#fff; color:#000; } }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+
+  /* Telas maiores (computador/tablet deitado): a tela continua igual no
+     celular, só aproveita melhor o espaço extra — mais itens lado a lado,
+     e os formulários ficam com uma largura confortável de leitura em vez
+     de esticar a linha inteira. */
+  @media (min-width: 860px){
+    #root{ max-width:1040px; }
+    .tabbar-inner{ max-width:1040px; }
+    .item-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; }
+    .form{ max-width:480px; }
+    .auth-box{ max-width:420px; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="root"><div class="loading-screen">Carregando...</div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ============================================================================
+   DESPENSA DIGITAL — frontend conectado ao Supabase.
+   Este arquivo troca o modelo antigo (tudo guardado dentro do próprio HTML,
+   republicado a cada alteração) por chamadas reais a um banco de dados
+   (Postgres, via Supabase), com login de verdade e permissões aplicadas
+   pelo SERVIDOR (Row Level Security), não mais pelo navegador.
+============================================================================ */
+
+var SUPABASE_URL = "https://jqmnboteogreoomayxpo.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxbW5ib3Rlb2dyZW9vbWF5eHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDM1MTUsImV4cCI6MjEwMzAxOTUxNX0.FbpvWGxMXmaJxhz2NDOv4hDmA5ttmrLYfZTUFEEVv_c";
+
+var sb = (window.__DESPENSA_TEST_CLIENT__) ? window.__DESPENSA_TEST_CLIENT__ : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ---------------------------------------------------------------------
+   CONSTANTES E FUNÇÕES PURAS DE FORMATAÇÃO (iguais ao app anterior)
+--------------------------------------------------------------------- */
+var ICONS = {
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5M3 7.5v9L12 21m-9-4.5L12 12m9-4.5v9L12 21m9-4.5L12 12m0 0V3"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 4-4m-4 4-4-4M4 19.5h16"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9m0 0 4 4m-4-4-4 4M4 4.5h16"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.3"/><path d="M4.5 20c1.4-4 4-6 7.5-6s6.1 2 7.5 6"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.6"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.9-1.4-2-3.4-2.2.8a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.2-.8-2 3.4L4.6 10.5a7.6 7.6 0 0 0 0 3L2.7 14.9l2 3.4 2.2-.8a7.6 7.6 0 0 0 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.2.8 2-3.4z"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round"><path d="M5 5l14 14M19 5 5 19"/></svg>'
+};
+var UNITS = ['kg','L','un','pacote','cx','garrafa'];
+var REASONS_SAIDA = ['Preparo de refeição','Vencimento/Descarte','Perda ou quebra','Outro motivo'];
+
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtQty(n){ var v = Math.round(n*100)/100; return v.toLocaleString('pt-BR', {maximumFractionDigits:2}); }
+function round2(n){ return Math.round(n*100)/100; }
+function normalizar(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function statusOf(item){ if(item.qty <= 0) return 'critico'; if(item.qty <= item.min) return 'baixo'; return 'ok'; }
+function statusLabel(s){ return s==='critico' ? 'Em falta' : (s==='baixo' ? 'Estoque baixo' : 'Estoque ok'); }
+function areaLabel(a){ return a==='ambas' ? 'Cozinha e Limpeza' : (a==='limpeza' ? 'Limpeza' : 'Cozinha'); }
+function fmtDateTime(iso){ var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
+function fmtTime(iso){ return new Date(iso).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
+function fmtWeekdayDate(iso){
+  var d = new Date(iso);
+  var wd = d.toLocaleDateString('pt-BR', {weekday:'long'});
+  wd = wd.charAt(0).toUpperCase() + wd.slice(1);
+  return wd + ' · ' + d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function dayKey(iso){ var d = new Date(iso); function pad(n){ return n<10 ? '0'+n : ''+n; } return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function monthKey(iso){ var d = new Date(iso); function pad(n){ return n<10 ? '0'+n : ''+n; } return d.getFullYear() + '-' + pad(d.getMonth()+1); }
+var NOMES_MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function categoriasEstado(state){ return (state && state.categorias) || []; }
+function nomeCategoria(c){ return (c && typeof c === 'object') ? c.nome : c; }
+function catOrderIndex(state, cat){
+  var cats = categoriasEstado(state);
+  for(var i=0;i<cats.length;i++){ if(nomeCategoria(cats[i])===cat) return i; }
+  return 9999;
+}
+function areaDaCategoria(state, nomeCat){
+  var cats = categoriasEstado(state);
+  for(var i=0;i<cats.length;i++){ if(nomeCategoria(cats[i])===nomeCat) return cats[i].area || 'cozinha'; }
+  return 'cozinha';
+}
+function categoriaVisivel(state, cat, ui){
+  var area = areaAtual(state, ui);
+  if(area==='todos') return true;
+  return areaDaCategoria(state, cat) === area;
+}
+
+/* ---------------------------------------------------------------------
+   CSV — igual ao app anterior, só que lendo do novo formato de estado.
+--------------------------------------------------------------------- */
+function csvCell(v){ var s = String(v==null?'':v); if(/[";\n]/.test(s)){ s = '"' + s.replace(/"/g,'""') + '"'; } return s; }
+function rowsToCsv(rows){ return rows.map(function(r){ return r.map(csvCell).join(';'); }).join('\r\n'); }
+function buildEstoqueCsv(state){
+  var rows = [['Nome','Categoria','Área','Unidade','Quantidade atual','Estoque mínimo','Situação','Cadastrado por']];
+  state.items.slice().sort(function(a,b){
+    var ca = catOrderIndex(state, a.cat), cb = catOrderIndex(state, b.cat);
+    if(ca!==cb) return ca-cb;
+    return a.name.localeCompare(b.name,'pt-BR');
+  }).forEach(function(it){
+    rows.push([it.name, it.cat, areaLabel(areaDaCategoria(state, it.cat)), it.unit, fmtQty(it.qty), fmtQty(it.min), statusLabel(statusOf(it)), it.criadoPor||'']);
+  });
+  return rowsToCsv(rows);
+}
+function buildChecklistContagemCsv(state){
+  var rows = [['Categoria','Área','Item','Unidade','Estoque no sistema','Contagem real (preencher)','Diferença (preencher)']];
+  state.items.slice().sort(function(a,b){
+    var ca = catOrderIndex(state, a.cat), cb = catOrderIndex(state, b.cat);
+    if(ca!==cb) return ca-cb;
+    return a.name.localeCompare(b.name,'pt-BR');
+  }).forEach(function(it){ rows.push([it.cat, areaLabel(areaDaCategoria(state, it.cat)), it.name, it.unit, fmtQty(it.qty), '', '']); });
+  return rowsToCsv(rows);
+}
+function buildListaCompras(state){
+  var itens = state.items.filter(function(it){ return statusOf(it)!=='ok'; }).sort(function(a,b){
+    var ca = catOrderIndex(state, a.cat), cb = catOrderIndex(state, b.cat);
+    if(ca!==cb) return ca-cb;
+    return a.name.localeCompare(b.name,'pt-BR');
+  });
+  var linhas = ['Lista de compras - Despensa Digital (' + (state.schoolName || 'Cozinha da escola') + ')', 'Gerada em ' + fmtDateTime(new Date().toISOString()), ''];
+  if(!itens.length){ linhas.push('Nenhum item com estoque baixo ou em falta.'); return linhas.join('\n'); }
+  var agrupar = itens.length > 5, catAtual = '';
+  itens.forEach(function(it){
+    if(agrupar && it.cat!==catAtual){ catAtual = it.cat; if(linhas[linhas.length-1] !== '') linhas.push(''); linhas.push(catAtual); }
+    var comprar = Math.max(1, round2((parseFloat(it.min)||0) - (parseFloat(it.qty)||0)));
+    linhas.push('- ' + it.name + ' - comprar ~' + fmtQty(comprar) + ' ' + it.unit + ' (estoque atual: ' + fmtQty(it.qty) + ' ' + it.unit + ', mínimo: ' + fmtQty(it.min) + ' ' + it.unit + ')');
+  });
+  return linhas.join('\n');
+}
+function buildMovimentacoesCsv(state, movsOverride){
+  var movs = movsOverride || state.movements;
+  var rows = [['Data','Horário','Dia da semana','Mês','Item','Tipo','Quantidade','Unidade','Quem registrou','Fornecedor','Motivo','Observação','Estornada','Estornada por','Estornada em']];
+  movs.slice().sort(function(a,b){ return new Date(a.at) - new Date(b.at); }).forEach(function(m){
+    var it = state.items.filter(function(i){ return i.id===m.itemId; })[0];
+    var d = new Date(m.at);
+    rows.push([
+      d.toLocaleDateString('pt-BR'), fmtTime(m.at), d.toLocaleDateString('pt-BR', {weekday:'long'}), NOMES_MES[d.getMonth()] + ' de ' + d.getFullYear(),
+      it?it.name:'Item removido', m.type==='entrada'?'Entrada':'Saída',
+      fmtQty(m.qty), m.unidade || (it?it.unit:''), m.who||'', m.fornecedor||'', m.motivo||'', m.nota||'',
+      m.estornado ? 'Sim' : 'Não', m.estornadoPor || '', m.estornadoEm ? fmtDateTime(m.estornadoEm) : ''
+    ]);
+  });
+  return rowsToCsv(rows);
+}
+function salvarDownloadBrowser(filename, content){
+  var BOM = String.fromCharCode(0xFEFF);
+  var blob = new Blob([BOM + content], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+/* ---------------------------------------------------------------------
+   ARQUIVAMENTO — helpers de data (a decisão de apagar de verdade é do
+   banco, via RPC arquivar_movimentos_antigos; aqui só calculamos o que
+   SERIA arquivado, para mostrar o aviso e gerar o CSV antes de mandar
+   apagar).
+--------------------------------------------------------------------- */
+function mesesAtras(n){ var d = new Date(); d.setMonth(d.getMonth() - n); return d; }
+function prazoArquivoMeses(state){ var n = parseInt(state && state.arquivoMeses, 10); return (n && n>0) ? n : 12; }
+function movimentacoesParaArquivar(state){
+  var corte = mesesAtras(prazoArquivoMeses(state));
+  return state.movements.filter(function(m){ return new Date(m.at) < corte; });
+}
+
+/* ---------------------------------------------------------------------
+   ESTADO EM MEMÓRIA
+--------------------------------------------------------------------- */
+var auth = { session:null, profile:null, screen:'entrar', loading:true, error:'', info:'',
+  formEmail:'', formSenha:'', formNome:'', formArea:'cozinha', formSenha2:'',
+  formSenhaNova:'', formSenhaNova2:'' };
+// Se a pessoa chegou aqui clicando no link de "Esqueci minha senha" do
+// e-mail, o Supabase coloca essa informação na URL. Detectamos aqui em
+// cima (antes de qualquer outra coisa rodar) pra garantir que ela caia
+// direto na tela de "definir nova senha", mesmo se o evento
+// PASSWORD_RECOVERY do Supabase disparar antes de mount() se inscrever
+// pra escutá-lo.
+var vindoDeRecuperacaoSenha = /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+var state = { schoolName:'Cozinha da escola', items:[], movements:[], categorias:[], profiles:[], auditLog:[], planilhaMapa:[], arquivoMeses:12, ultimaExportacaoEm:null };
+var ui = { tab:'estoque', search:'', userSearch:'', categoryFilter:'todas', grupoFilter:'todos', showLowOnly:false, modal:null, cadastroSub:'produtos',
+  formItemId:'', formQty:1, formUnidade:'', formFornecedor:'', formMotivo:REASONS_SAIDA[0], formNota:'', histSearch:'', saving:false };
+var toastTimer = null;
+
+function toast(msg){
+  var el = document.getElementById('toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2600);
+}
+
+/* ---------------------------------------------------------------------
+   PERMISSÕES NO CLIENTE — ainda existem (pra esconder botões que a
+   pessoa não pode usar), mas agora são só uma conveniência de UX: quem
+   garante de verdade é a política de segurança no banco de dados
+   (Row Level Security), então mesmo que alguém contorne isso pelo
+   DevTools, o servidor recusa a ação.
+--------------------------------------------------------------------- */
+function currentProfile(){ return auth.profile; }
+function quemAtual(){ return auth.profile ? auth.profile.name : ''; }
+function isAdmin(){ return !!auth.profile && auth.profile.role === 'admin'; }
+function areaAtual(state, ui){
+  var p = auth.profile;
+  if(!p) return 'todos';
+  if(p.role === 'padrao' && p.area !== 'ambas') return p.area;
+  return ui.grupoFilter || 'todos';
+}
+function exigirAdmin(){
+  if(isAdmin()) return true;
+  toast('Só um administrador pode fazer isso.');
+  return false;
+}
+
+/* ---------------------------------------------------------------------
+   RENDER — funções puras (recebem estado, devolvem HTML). Mesma lógica
+   visual do app anterior.
+--------------------------------------------------------------------- */
+function renderTopBar(state, ui){
+  var p = auth.profile;
+  var nome = p ? escHtml(p.name) : '';
+  return '' +
+  '<div class="topbar">' +
+    '<div class="brand">' +
+      '<div class="brand-name">Despensa Digital</div>' +
+      '<div class="brand-sub">' + escHtml(state.schoolName || 'Cozinha da escola') + '</div>' +
+    '</div>' +
+    '<button class="who-chip" type="button" data-action="abrir-conta">' + ICONS.user + '<span>' + nome + '</span></button>' +
+  '</div>';
+}
+function renderPendingBanner(ui){
+  if(!ui.saving) return '';
+  return '<div class="pending-banner">Salvando...</div>';
+}
+function renderAlertaEstoque(state, ui){
+  if(ui.tab==='estoque' && ui.showLowOnly) return '';
+  var criticos = 0, baixos = 0;
+  state.items.forEach(function(it){ var st = statusOf(it); if(st==='critico') criticos++; else if(st==='baixo') baixos++; });
+  if(!criticos && !baixos) return '';
+  var partes = [];
+  if(criticos) partes.push(criticos + ' item' + (criticos===1?'':'s') + ' em falta');
+  if(baixos) partes.push(baixos + ' com estoque baixo');
+  return '<button class="alert-banner ' + (criticos?'critico':'baixo') + '" type="button" data-action="ver-baixo-estoque">' + escHtml(partes.join(' · ')) + '</button>';
+}
+function renderAlertaArquivo(state, ui){
+  if(!isAdmin()) return '';
+  if(ui.tab==='cadastro' && ui.cadastroSub==='dados') return '';
+  var pendentes = movimentacoesParaArquivar(state).length;
+  if(!pendentes) return '';
+  return '<button class="alert-banner baixo" type="button" data-action="ir-arquivar">' + pendentes + ' movimentação(ões) com mais de ' + prazoArquivoMeses(state) + ' meses prontas para arquivar</button>';
+}
+function itemsFiltered(state, ui){
+  var q = normalizar((ui.search||'').trim());
+  return state.items.filter(function(it){
+    if(!categoriaVisivel(state, it.cat, ui)) return false;
+    if(ui.categoryFilter && ui.categoryFilter!=='todas' && it.cat!==ui.categoryFilter) return false;
+    if(ui.showLowOnly && statusOf(it)==='ok') return false;
+    if(q && normalizar(it.name).indexOf(q)===-1) return false;
+    return true;
+  }).sort(function(a,b){ return a.name.localeCompare(b.name,'pt-BR'); });
+}
+function renderItemCard(it, ui){
+  var st = statusOf(it);
+  var podeAjustar = isAdmin() || (auth.profile && auth.profile.area === 'ambas') || areaDaCategoria(state, it.cat) === (auth.profile ? auth.profile.area : '');
+  return '' +
+  '<div class="item-card" data-status="' + st + '">' +
+    '<div class="item-top">' +
+      '<div class="item-name">' + escHtml(it.name) + '</div>' +
+      '<div class="item-qty"><b>' + fmtQty(it.qty) + '</b><span>' + escHtml(it.unit) + ' &middot; mín. ' + fmtQty(it.min) + '</span></div>' +
+    '</div>' +
+    '<div class="item-top" style="align-items:center">' +
+      '<span class="status-tag ' + st + '">' + statusLabel(st) + '</span>' +
+      '<button class="qtybtn" type="button" style="flex:none;width:34px;padding:6px 0" data-action="ajustar-item" data-id="' + it.id + '"' + (podeAjustar?'':' disabled') + '>' + ICONS.gear + '</button>' +
+    '</div>' +
+    '<div class="item-actions">' +
+      '<button class="qtybtn entrada" type="button" data-action="ir-entrada" data-id="' + it.id + '">+ Entrada</button>' +
+      '<button class="qtybtn saida" type="button" data-action="ir-saida" data-id="' + it.id + '">&minus; Saída</button>' +
+    '</div>' +
+  '</div>';
+}
+function renderGrupoChips(state, ui){
+  return '<div class="chip-row grupo-row">' +
+    '<button class="chip" type="button" data-action="set-grupo" data-grupo="todos" aria-pressed="' + ((ui.grupoFilter||'todos')==='todos'?'true':'false') + '">Tudo</button>' +
+    '<button class="chip" type="button" data-action="set-grupo" data-grupo="cozinha" aria-pressed="' + (ui.grupoFilter==='cozinha'?'true':'false') + '">Cozinha</button>' +
+    '<button class="chip" type="button" data-action="set-grupo" data-grupo="limpeza" aria-pressed="' + (ui.grupoFilter==='limpeza'?'true':'false') + '">Limpeza</button>' +
+  '</div>';
+}
+function renderAreaAtualLabel(){
+  var p = auth.profile;
+  if(!p || p.role!=='padrao') return '';
+  return '<div class="label" style="display:block;padding:2px 2px 6px">Área: ' + areaLabel(p.area) + '</div>';
+}
+function renderCatChips(state, ui){
+  var chips = ['<button class="chip" type="button" data-action="set-cat" data-cat="todas" aria-pressed="' + (ui.categoryFilter==='todas'?'true':'false') + '">Todas</button>'];
+  categoriasEstado(state).forEach(function(c){
+    var nome = nomeCategoria(c);
+    if(!categoriaVisivel(state, nome, ui)) return;
+    chips.push('<button class="chip" type="button" data-action="set-cat" data-cat="' + escHtml(nome) + '" aria-pressed="' + (ui.categoryFilter===nome?'true':'false') + '">' + escHtml(nome) + '</button>');
+  });
+  return chips.join('');
+}
+function renderEstoque(state, ui){
+  var list = itemsFiltered(state, ui);
+  var lowCount = state.items.filter(function(it){ return statusOf(it)!=='ok'; }).length;
+  var byCat = {}, order = [];
+  list.forEach(function(it){ if(!byCat[it.cat]){ byCat[it.cat] = []; order.push(it.cat); } byCat[it.cat].push(it); });
+  order.sort(function(a,b){ return catOrderIndex(state, a) - catOrderIndex(state, b); });
+  var groupsHtml = order.map(function(cat){
+    var cards = byCat[cat].map(function(it){ return renderItemCard(it, ui); }).join('');
+    return '<div class="cat-group"><div class="cat-header">' + escHtml(cat) + ' <span class="cat-count">(' + byCat[cat].length + ')</span></div><div class="item-list">' + cards + '</div></div>';
+  }).join('');
+  return '' +
+  '<div class="section-title">Estoque atual</div>' +
+  '<div class="search-row"><input class="search-input" type="text" placeholder="Buscar item..." value="' + escHtml(ui.search||'') + '" data-field="search"></div>' +
+  (isAdmin() || (auth.profile && auth.profile.area==='ambas') ? renderGrupoChips(state, ui) : renderAreaAtualLabel()) +
+  '<div class="chip-row"><button class="chip low" type="button" data-action="toggle-low" aria-pressed="' + (ui.showLowOnly?'true':'false') + '">Baixo estoque (' + lowCount + ')</button>' + renderCatChips(state, ui) + '</div>' +
+  (groupsHtml || '<div class="empty-note">Nenhum item encontrado com esse filtro.</div>') +
+  (lowCount ? '<button class="btn btn-ghost" type="button" data-action="compartilhar-compras">Compartilhar lista de compras</button>' : '') +
+  '<button class="btn btn-ghost" type="button" data-action="gerar-contagem">Gerar lista de contagem</button>' +
+  '<button class="btn btn-ghost" type="button" data-action="exportar-planilha">&#8681; Exportar planilha (Excel)</button>';
+}
+function optionsForSelect(state, ui, selectedId){
+  var byCat = {};
+  state.items.forEach(function(it){ if(!categoriaVisivel(state, it.cat, ui)) return; (byCat[it.cat] = byCat[it.cat]||[]).push(it); });
+  var html = '<option value="">Selecione um item...</option>';
+  categoriasEstado(state).forEach(function(c){
+    var nome = nomeCategoria(c);
+    if(!byCat[nome] || !byCat[nome].length) return;
+    html += '<optgroup label="' + escHtml(nome) + '">';
+    byCat[nome].sort(function(a,b){return a.name.localeCompare(b.name,'pt-BR');}).forEach(function(it){
+      html += '<option value="' + it.id + '"' + (it.id===selectedId?' selected':'') + '>' + escHtml(it.name) + ' (' + fmtQty(it.qty) + ' ' + escHtml(it.unit) + ')</option>';
+    });
+    html += '</optgroup>';
+  });
+  return html;
+}
+function fornecedoresConhecidos(state){
+  var seen = {}, list = [];
+  state.movements.forEach(function(m){ if(m.type==='entrada' && m.fornecedor && !seen[m.fornecedor]){ seen[m.fornecedor]=true; list.push(m.fornecedor); } });
+  return list.sort(function(a,b){ return a.localeCompare(b,'pt-BR'); });
+}
+function renderMovForm(state, ui, kind){
+  var isEntrada = kind==='entrada';
+  var itemId = ui.formItemId || '';
+  var item = state.items.filter(function(i){return i.id===itemId;})[0];
+  var qty = ui.formQty==null ? 1 : ui.formQty;
+  var unidade = item ? item.unit : '';
+  var recent = state.movements.filter(function(m){return m.type===kind;}).slice(-5).reverse();
+  var recentHtml = recent.map(function(m){ return renderHistRow(m, state, true); }).join('');
+  var fornecedores = isEntrada ? fornecedoresConhecidos(state) : [];
+  var disab = ui.saving;
+  return '' +
+  '<div class="section-title">' + (isEntrada ? 'Registrar entrada' : 'Registrar saída') + '</div>' +
+  '<div class="form">' +
+    '<div class="field"><label>Item</label><select data-field="form-item"' + (disab?' disabled':'') + '>' + optionsForSelect(state, ui, itemId) + '</select></div>' +
+    (item ? '<div class="picked-item"><span>Estoque atual</span><b>' + fmtQty(item.qty) + ' ' + escHtml(item.unit) + '</b></div>' : '') +
+    '<div class="field"><label>Quantidade</label><div class="qty-row">' +
+      '<button class="stepper" type="button" data-action="qty-step" data-delta="-0.5"' + (disab?' disabled':'') + '>&minus;</button>' +
+      '<input type="number" min="0" step="0.5" style="text-align:center" value="' + qty + '" data-field="form-qty"' + (disab?' disabled':'') + '>' +
+      '<button class="stepper" type="button" data-action="qty-step" data-delta="0.5"' + (disab?' disabled':'') + '>+</button>' +
+    '</div></div>' +
+    (item ? '<div class="field"><label>Unidade</label><div class="picked-item" style="margin:0"><span>' + escHtml(unidade) + '</span></div><div class="field-hint">A unidade é definida no cadastro do produto. Um(a) administrador(a) pode corrigi-la em "Ajustar".</div></div>' : '') +
+    (isEntrada ?
+    '<div class="field"><label>Fornecedor</label><input type="text" list="fornecedores-list" placeholder="Nome do fornecedor" value="' + escHtml(ui.formFornecedor||'') + '" data-field="form-fornecedor"' + (disab?' disabled':'') + '><datalist id="fornecedores-list">' + fornecedores.map(function(f){ return '<option value="' + escHtml(f) + '">'; }).join('') + '</datalist></div>'
+    :
+    '<div class="field"><label>Motivo</label><select data-field="form-motivo"' + (disab?' disabled':'') + '>' + REASONS_SAIDA.map(function(r){ return '<option' + (ui.formMotivo===r?' selected':'') + '>' + escHtml(r) + '</option>'; }).join('') + '</select></div>') +
+    '<div class="field"><label>Observação (opcional)</label><input type="text" placeholder="Ex.: lote, nota fiscal..." value="' + escHtml(ui.formNota||'') + '" data-field="form-nota"' + (disab?' disabled':'') + '></div>' +
+    '<button class="btn btn-primary" data-kind="' + kind + '" type="button" data-action="confirmar-mov" data-kind2="' + kind + '"' + ((disab || !item)?' disabled':'') + '>Confirmar ' + (isEntrada?'entrada':'saída') + '</button>' +
+  '</div>' +
+  (recentHtml ? '<div class="section-title" style="margin-top:4px;font-size:15px">Últimas registradas</div><div class="hist-list">' + recentHtml + '</div>' : '');
+}
+function renderHistRow(m, state, allowUndo){
+  var it = state.items.filter(function(i){return i.id===m.itemId;})[0];
+  var isEntrada = m.type==='entrada';
+  var un = m.unidade || (it?it.unit:'');
+  return '<div class="hist-row">' +
+    '<div class="hist-time">' + fmtTime(m.at) + '</div>' +
+    '<div class="hist-icon ' + m.type + '">' + (isEntrada?ICONS.down:ICONS.up) + '</div>' +
+    '<div class="hist-main"><div class="hist-title' + (m.estornado?' is-undone':'') + '">' + escHtml(it?it.name:'Item removido') + (m.estornado?' <span class="undo-tag">Estornada</span>':'') + '</div>' +
+    '<div class="hist-sub">' + (m.who?escHtml(m.who):'Sem identificação') + (m.fornecedor?' · '+escHtml(m.fornecedor):'') + (m.motivo?' · '+escHtml(m.motivo):'') + (m.nota?' · '+escHtml(m.nota):'') + (m.estornado?' · desfeita por '+escHtml(m.estornadoPor||''):'') + '</div></div>' +
+    '<div class="hist-side"><div class="hist-qty ' + m.type + '">' + (isEntrada?'+':'-') + fmtQty(m.qty) + ' ' + escHtml(un) + '</div>' +
+    (allowUndo && !m.estornado ? '<button class="undo-btn" type="button" data-action="estornar-mov" data-id="' + m.id + '">Desfazer</button>' : '') + '</div>' +
+  '</div>';
+}
+function renderHistorico(state, ui){
+  var q = normalizar((ui.histSearch||'').trim());
+  var list = state.movements.slice().sort(function(a,b){ return new Date(b.at) - new Date(a.at); }).filter(function(m){
+    if(!q) return true;
+    var it = state.items.filter(function(i){return i.id===m.itemId;})[0];
+    var name = it? normalizar(it.name) : '';
+    return name.indexOf(q)!==-1 || normalizar(m.who||'').indexOf(q)!==-1 || normalizar(m.fornecedor||'').indexOf(q)!==-1 || normalizar(m.motivo||'').indexOf(q)!==-1;
+  });
+  var byDay = {}, order = [];
+  list.forEach(function(m){ var k = dayKey(m.at); if(!byDay[k]){ byDay[k] = { label: fmtWeekdayDate(m.at), rows: [] }; order.push(k); } byDay[k].rows.push(m); });
+  var groupsHtml = order.map(function(k){
+    var g = byDay[k];
+    return '<div class="day-group"><div class="day-header">' + escHtml(g.label) + '</div><div class="hist-list">' + g.rows.map(function(m){ return renderHistRow(m, state, false); }).join('') + '</div></div>';
+  }).join('');
+  return '' +
+  '<div class="section-title">Histórico de movimentações</div>' +
+  '<div class="field-hint">Pra desfazer uma entrada ou saída, use o botão "Desfazer" que aparece em "Últimas registradas" nas abas Entrada/Saída (só fica disponível ali, logo depois de registrar).</div>' +
+  '<div class="search-row"><input class="search-input" type="text" placeholder="Buscar por item, fornecedor ou nome..." value="' + escHtml(ui.histSearch||'') + '" data-field="hist-search"></div>' +
+  (groupsHtml || '<div class="empty-note">Nenhuma movimentação registrada ainda.</div>') +
+  '<button class="btn btn-ghost" type="button" data-action="gerar-contagem">Gerar lista de contagem</button>' +
+  '<button class="btn btn-ghost" type="button" data-action="exportar-planilha">&#8681; Exportar planilha (Excel)</button>';
+}
+function renderTabBar(state, ui){
+  function tab(id, icon, label){ return '<button class="tab" type="button" data-action="set-tab" data-tab="' + id + '" aria-current="' + (ui.tab===id?'true':'false') + '">' + icon + '<span>' + label + '</span></button>'; }
+  return '<div class="tabbar"><div class="tabbar-inner">' +
+    tab('estoque', ICONS.box, 'Estoque') + tab('entrada', ICONS.down, 'Entrada') + tab('saida', ICONS.up, 'Saída') + tab('historico', ICONS.clock, 'Histórico') +
+    (isAdmin() ? tab('cadastro', ICONS.gear, 'Cadastro') : '') +
+  '</div></div>';
+}
+function renderModal(state, ui){
+  if(!ui.modal) return '';
+  if(ui.modal.type==='conta'){
+    var p = auth.profile || {name:'',role:'padrao',area:'cozinha'};
+    return '<div class="overlay" data-action="close-modal"><div class="modal" data-action="noop">' +
+      '<div class="modal-title">' + escHtml(p.name) + '</div>' +
+      '<div style="font-size:13px;color:var(--muted)">' + (p.role==='admin' ? 'Administrador(a)' : 'Padrão · ' + areaLabel(p.area)) + '</div>' +
+      '<button class="btn btn-ghost" type="button" data-action="sair">Sair da conta</button>' +
+      '<button class="btn btn-ghost" type="button" data-action="close-modal">Fechar</button>' +
+    '</div></div>';
+  }
+  if(ui.modal.type==='novo-item'){
+    var f = ui.modal;
+    return '<div class="overlay" data-action="close-modal"><div class="modal" data-action="noop">' +
+      '<div class="modal-title">Adicionar novo item</div>' +
+      '<div class="field"><label>Nome do item</label><input type="text" value="' + escHtml(f.name||'') + '" data-field="ni-nome" placeholder="Ex.: Molho shoyu"></div>' +
+      '<div class="field"><label>Categoria</label><select data-field="ni-cat">' + categoriasEstado(state).map(function(c){var nome=nomeCategoria(c); return '<option' + (f.cat===nome?' selected':'') + '>' + escHtml(nome) + '</option>';}).join('') + '</select></div>' +
+      '<div class="field"><label>Unidade</label><select data-field="ni-un">' + UNITS.map(function(u){return '<option' + (f.unit===u?' selected':'') + '>' + escHtml(u) + '</option>';}).join('') + '</select></div>' +
+      '<div class="field"><label>Quantidade inicial</label><input type="number" min="0" step="0.5" value="' + (f.qty==null?0:f.qty) + '" data-field="ni-qty"></div>' +
+      '<div class="field"><label>Estoque mínimo (para alerta)</label><input type="number" min="0" step="0.5" value="' + (f.min==null?1:f.min) + '" data-field="ni-min"></div>' +
+      '<div class="field-hint">Quando a quantidade em estoque chegar nesse número (ou menos), o item aparece com a etiqueta "Estoque baixo" e entra na lista de compras.</div>' +
+      '<button class="btn btn-primary" type="button" data-action="salvar-novo-item"' + (ui.saving?' disabled':'') + '>Adicionar item</button>' +
+      '<button class="btn btn-ghost" type="button" data-action="close-modal">Cancelar</button>' +
+    '</div></div>';
+  }
+  if(ui.modal.type==='perfil-editar'){
+    var pe = ui.modal;
+    var alvoPe = state.profiles.filter(function(p){ return p.id===pe.id; })[0];
+    if(!alvoPe) return '';
+    var peRoleAtual = pe.role!=null ? pe.role : alvoPe.role;
+    var peAreaAtual = pe.area!=null ? pe.area : (alvoPe.area==='limpeza' ? 'limpeza' : (alvoPe.area==='ambas' ? 'ambas' : 'cozinha'));
+    return '<div class="overlay" data-action="close-modal"><div class="modal" data-action="noop">' +
+      '<div class="modal-title">Editar pessoa</div>' +
+      '<div class="field"><label>Nome</label><input type="text" value="' + escHtml(pe.name!=null?pe.name:alvoPe.name) + '" data-field="pe-nome" autofocus></div>' +
+      '<div class="field"><label>Papel</label><select data-field="pe-role">' +
+        '<option value="padrao"' + (peRoleAtual==='padrao'?' selected':'') + '>Padrão</option>' +
+        '<option value="admin"' + (peRoleAtual==='admin'?' selected':'') + '>Administrador</option>' +
+      '</select></div>' +
+      (peRoleAtual==='padrao' ?
+      '<div class="field"><label>Área</label><select data-field="pe-area">' +
+        '<option value="cozinha"' + (peAreaAtual==='cozinha'?' selected':'') + '>Cozinha</option>' +
+        '<option value="limpeza"' + (peAreaAtual==='limpeza'?' selected':'') + '>Limpeza</option>' +
+        '<option value="ambas"' + (peAreaAtual==='ambas'?' selected':'') + '>Cozinha e Limpeza</option>' +
+      '</select></div>' +
+      '<div class="field-hint">"Cozinha e Limpeza" dá acesso às duas áreas ao mesmo tempo, sem precisar ser administrador(a).</div>' : '') +
+      '<button class="btn btn-primary" type="button" data-action="salvar-edicao-perfil" data-id="' + alvoPe.id + '"' + (ui.saving?' disabled':'') + '>Salvar alterações</button>' +
+      '<button class="btn btn-ghost" type="button" data-action="close-modal">Cancelar</button>' +
+    '</div></div>';
+  }
+  if(ui.modal.type==='confirmar-perfil'){
+    var cp = ui.modal;
+    var ehRemover = cp.acao==='remover';
+    var titulo = ehRemover ? 'Remover seu próprio acesso?' : 'Remover seu próprio acesso de administrador?';
+    var texto = ehRemover ?
+      'Você está prestes a remover o seu próprio cadastro ("' + escHtml(cp.name) + '"). Você vai perder o acesso imediatamente e vai precisar que outro administrador te readicione. Tem certeza?' :
+      'Você está prestes a mudar seu próprio papel de Administrador para Padrão. Você vai perder acesso à aba Cadastro e a ações administrativas imediatamente. Tem certeza?';
+    var acaoConfirmar = ehRemover ? 'confirmar-remover-proprio' : 'confirmar-rebaixar-proprio';
+    return '<div class="overlay" data-action="close-modal"><div class="modal" data-action="noop">' +
+      '<div class="modal-title">' + titulo + '</div>' +
+      '<div style="font-size:13px">' + texto + '</div>' +
+      '<button class="btn btn-primary" type="button" style="background:var(--crit)" data-action="' + acaoConfirmar + '"' + (ui.saving?' disabled':'') + '>Sim, tenho certeza</button>' +
+      '<button class="btn btn-ghost" type="button" data-action="close-modal">Cancelar</button>' +
+    '</div></div>';
+  }
+  if(ui.modal.type==='ajustar'){
+    var it = state.items.filter(function(i){return i.id===ui.modal.id;})[0];
+    if(!it) return '';
+    return '<div class="overlay" data-action="close-modal"><div class="modal" data-action="noop">' +
+      '<div class="modal-title">Ajustar ' + escHtml(it.name) + '</div>' +
+      (it.ajustadoPor ? '<div class="field-hint">Última correção: ' + escHtml(it.ajustadoPor) + ', ' + fmtDateTime(it.ajustadoEm) + '</div>' : '') +
+      '<div class="field"><label>Quantidade em estoque (contagem)</label><input type="number" min="0" step="0.5" value="' + it.qty + '" data-field="aj-qty"></div>' +
+      '<div class="field-hint">Use isso só pra corrigir uma contagem errada (ex.: depois de conferir no armário). Pra registrar uma compra ou um uso normal, use as abas Entrada/Saída.</div>' +
+      '<div class="field"><label>Estoque mínimo (para alerta)</label><input type="number" min="0" step="0.5" value="' + it.min + '" data-field="aj-min"></div>' +
+      '<div class="field-hint">Quando a quantidade chegar nesse número (ou menos), o item aparece com a etiqueta "Estoque baixo".</div>' +
+      (isAdmin() ?
+        '<div class="field"><label>Unidade</label><select data-field="aj-un">' + UNITS.map(function(u){ return '<option' + (it.unit===u?' selected':'') + '>' + escHtml(u) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field-hint">Mudar a unidade aqui não converte a quantidade já registrada — confira o número acima depois de trocar.</div>'
+        : '') +
+      (isAdmin() && areaDaCategoria(state, it.cat)==='cozinha' ?
+        '<div class="field"><label>Linha no Mapa de Merenda (Gênero)</label><input type="text" placeholder="Ex.: ARROZ TIPO 1" value="' + escHtml(generoPlanilhaDoItem(state, it.id)) + '" data-field="aj-genero-planilha"></div>' +
+        '<div class="field-hint">Texto exatamente como aparece na coluna "Gênero" da planilha do Mapa de Merenda — é assim que a sincronização automática de entrada/saída acha a linha certa. Deixe em branco se este item não entra nessa planilha.</div>'
+        : '') +
+      '<button class="btn btn-primary" type="button" data-action="salvar-ajuste" data-id="' + it.id + '"' + (ui.saving?' disabled':'') + '>Salvar ajuste</button>' +
+      (isAdmin() ? '<button class="btn btn-ghost" type="button" style="color:var(--crit)" data-action="remover-item" data-id="' + it.id + '"' + (ui.saving?' disabled':'') + '>Remover item</button>' : '') +
+      '<button class="btn btn-ghost" type="button" data-action="close-modal">Cancelar</button>' +
+    '</div></div>';
+  }
+  if(ui.modal.type==='confirmar-duplicado'){
+    var cd = ui.modal;
+    return '<div class="overlay" data-action="close-modal"><div class="modal" data-action="noop">' +
+      '<div class="modal-title">Já existe um item parecido</div>' +
+      '<div style="font-size:13px">Já existe "' + escHtml(cd.nomeExistente) + '" cadastrado em ' + escHtml(cd.catNome) + '. Tem certeza que quer cadastrar "' + escHtml(cd.nome) + '" como um item novo e separado (em vez de usar o que já existe)?</div>' +
+      '<button class="btn btn-primary" type="button" data-action="confirmar-duplicado-cadastrar"' + (ui.saving?' disabled':'') + '>Sim, cadastrar mesmo assim</button>' +
+      '<button class="btn btn-ghost" type="button" data-action="close-modal">Cancelar</button>' +
+    '</div></div>';
+  }
+  return '';
+}
+function renderCadastroSubChips(ui){
+  var sub = ui.cadastroSub || 'produtos';
+  function chip(id, label){ return '<button class="chip" type="button" data-action="set-cadastro-sub" data-sub="' + id + '" aria-pressed="' + (sub===id?'true':'false') + '">' + label + '</button>'; }
+  return '<div class="chip-row">' + chip('resumo','Resumo') + chip('produtos','Produtos') + chip('categorias','Categorias') + chip('usuarios','Usuários') + chip('dados','Dados') + chip('auditoria','Auditoria') + '</div>';
+}
+function renderCadastroProdutos(state, ui){
+  return '' +
+    '<div class="section-title" style="font-size:15px">Produtos</div>' +
+    '<div style="font-size:12px;color:var(--muted)">Para remover um produto, abra o item no Estoque (ícone de engrenagem) e use "Remover item".</div>' +
+    '<button class="btn btn-primary" type="button" data-action="novo-item">+ Cadastrar produto</button>' +
+    '<a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="conferencia-nf.html">&#128247; Importar de nota fiscal (foto)</a>' +
+    '<a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="sync-planilha.html">&#128190; Sincronizar com a planilha (Merenda)</a>';
+}
+function renderCadastroCategorias(state, ui){
+  var cats = categoriasEstado(state);
+  var rows = cats.map(function(c){
+    var nome = nomeCategoria(c);
+    var area = c.area || 'cozinha';
+    var total = state.items.filter(function(it){ return it.cat===nome; }).length;
+    return '<div class="cad-row categoria-row" style="flex-wrap:wrap;gap:8px">' +
+      '<span>' + escHtml(nome) + ' <small>(' + total + ' produto' + (total===1?'':'s') + ')</small></span>' +
+      '<span style="display:flex;gap:6px;align-items:center">' +
+        '<select data-field="cat-area-edit" data-cat-id="' + escHtml(c.id) + '">' +
+          '<option value="cozinha"' + (area==='cozinha'?' selected':'') + '>Cozinha</option>' +
+          '<option value="limpeza"' + (area==='limpeza'?' selected':'') + '>Limpeza</option>' +
+        '</select>' +
+        '<button class="undo-btn" type="button" data-action="salvar-area-categoria" data-cat-id="' + escHtml(c.id) + '">Salvar área</button>' +
+        '<button class="undo-btn" type="button" data-action="remover-categoria" data-cat-id="' + escHtml(c.id) + '" data-cat="' + escHtml(nome) + '"' + (total?' disabled':'') + '>Remover</button>' +
+      '</span>' +
+    '</div>';
+  }).join('');
+  return '' +
+    '<div class="section-title" style="font-size:15px">Categorias</div>' +
+    '<div class="profile-list">' + rows + '</div>' +
+    '<div class="form">' +
+      '<div class="field"><label>Nova categoria</label><input type="text" value="" data-field="cat-nova" placeholder="Ex.: Higiene"></div>' +
+      '<div class="field"><label>Área</label><select data-field="cat-area"><option value="cozinha" selected>Cozinha</option><option value="limpeza">Limpeza</option></select></div>' +
+      '<button class="btn btn-primary" type="button" data-action="adicionar-categoria">Adicionar categoria</button>' +
+    '</div>';
+}
+function renderCadastroUsuarios(state, ui){
+  var q = normalizar((ui.userSearch||'').trim());
+  var profilesFiltrados = state.profiles.filter(function(p){ return !q || normalizar(p.name).indexOf(q)!==-1; });
+  var rows = profilesFiltrados.map(function(p){
+    var badge = p.role==='admin' ? 'Admin' : 'Padrão';
+    var areaLbl = p.role==='padrao' ? (' · ' + areaLabel(p.area)) : '';
+    return '<div class="cad-row categoria-row">' +
+      '<span>' + escHtml(p.name) + ' <small>(' + badge + areaLbl + ')</small></span>' +
+      '<span style="display:flex;gap:6px">' +
+        '<button class="undo-btn" type="button" data-action="editar-perfil" data-id="' + p.id + '">Editar</button>' +
+        '<button class="undo-btn" type="button" data-action="remover-perfil" data-id="' + p.id + '">Remover</button>' +
+      '</span>' +
+    '</div>';
+  }).join('');
+  return '' +
+    '<div class="section-title" style="font-size:15px">Usuários</div>' +
+    '<div style="font-size:12px;color:var(--muted)">Pessoas novas se cadastram sozinhas na tela de login ("Criar conta") — elas entram automaticamente como "Padrão"; ajuste o papel e a área delas aqui depois.</div>' +
+    (state.profiles.length > 5 ? '<div class="search-row"><input class="search-input" type="text" placeholder="Buscar pessoa..." value="' + escHtml(ui.userSearch||'') + '" data-field="user-search"></div>' : '') +
+    '<div class="profile-list">' + rows + '</div>' +
+    (profilesFiltrados.length ? '' : (q ? '<div class="empty-note">Nenhuma pessoa encontrada com esse nome.</div>' : '<div class="empty-note">Nenhuma pessoa cadastrada ainda.</div>'));
+}
+function renderCadastroDados(state, ui){
+  var meses = prazoArquivoMeses(state);
+  var pendentes = movimentacoesParaArquivar(state).length;
+  return '' +
+    '<div class="section-title" style="font-size:15px">Dados e arquivamento</div>' +
+    '<div style="font-size:12px;color:var(--muted)">Movimentações mais antigas que o prazo abaixo são exportadas para uma planilha CSV e removidas do histórico ativo. Nada é apagado sem antes gerar o arquivo CSV.</div>' +
+    '<div class="form">' +
+      '<div class="field"><label>Arquivar movimentações com mais de (meses)</label><input type="number" min="1" step="1" value="' + meses + '" data-field="arquivo-meses"></div>' +
+      '<button class="btn btn-ghost" type="button" data-action="salvar-prazo-arquivo"' + (ui.saving?' disabled':'') + '>Salvar prazo</button>' +
+    '</div>' +
+    '<div style="font-size:13px;margin-top:12px">' + pendentes + ' movimentação(ões) já passaram do prazo atual.</div>' +
+    '<button class="btn btn-primary" type="button" data-action="arquivar-antigas"' + ((pendentes && !ui.saving)?'':' disabled') + '>Arquivar ' + pendentes + ' movimentação(ões) agora</button>';
+}
+function renderCadastroResumo(state, ui){
+  var criticos = state.items.filter(function(it){ return statusOf(it)==='critico'; });
+  var baixos = state.items.filter(function(it){ return statusOf(it)==='baixo'; });
+  var recentes = state.movements.slice(0, 8);
+  var porPessoa = {};
+  state.movements.forEach(function(m){
+    var nome = m.who || 'Desconhecido';
+    porPessoa[nome] = (porPessoa[nome]||0) + 1;
+  });
+  var rankingPessoas = Object.keys(porPessoa).map(function(n){ return {nome:n, total:porPessoa[n]}; })
+    .sort(function(a,b){ return b.total - a.total; }).slice(0, 8);
+
+  var recentesHtml = recentes.map(function(m){
+    var it = state.items.filter(function(i){ return i.id===m.itemId; })[0];
+    var isEntrada = m.type==='entrada';
+    return '<div class="cad-row categoria-row" style="align-items:flex-start;flex-direction:column;gap:2px">' +
+      '<span style="font-size:13px">' + (isEntrada?'Entrada':'Saída') + ' de ' + fmtQty(m.qty) + ' ' + escHtml(m.unidade||'') + ' — ' + escHtml(it?it.name:'Item removido') + (m.estornado?' <span class="undo-tag">Estornada</span>':'') + '</span>' +
+      '<small style="color:var(--muted)">' + escHtml(m.who||'') + ', ' + fmtDateTime(m.at) + '</small>' +
+    '</div>';
+  }).join('');
+
+  var pessoasHtml = rankingPessoas.map(function(p){
+    return '<div class="cad-row categoria-row"><span>' + escHtml(p.nome) + '</span><small style="color:var(--muted)">' + p.total + ' ação(ões)</small></div>';
+  }).join('');
+
+  return '' +
+    '<div class="section-title" style="font-size:15px">Resumo geral</div>' +
+    '<div style="font-size:12px;color:var(--muted)">Visão geral do estoque e da atividade recente, pra você acompanhar sem precisar entrar em cada aba.</div>' +
+    '<button class="picked-item" type="button" style="width:100%;border:none;cursor:pointer" data-action="ver-baixo-estoque"><span>Itens em falta (zerados)</span><b style="' + (criticos.length?'color:var(--crit)':'') + '">' + criticos.length + '</b></button>' +
+    '<button class="picked-item" type="button" style="width:100%;border:none;cursor:pointer" data-action="ver-baixo-estoque"><span>Itens com estoque baixo</span><b style="' + (baixos.length?'color:var(--warn)':'') + '">' + baixos.length + '</b></button>' +
+    '<div class="picked-item"><span>Total de produtos cadastrados</span><b>' + state.items.length + '</b></div>' +
+    '<div class="picked-item"><span>Pessoas cadastradas</span><b>' + state.profiles.length + '</b></div>' +
+    '<div class="section-title" style="font-size:15px;margin-top:14px">Atividade recente</div>' +
+    '<div class="profile-list">' + recentesHtml + '</div>' +
+    (recentesHtml ? '' : '<div class="empty-note">Nenhuma movimentação registrada ainda.</div>') +
+    '<div class="section-title" style="font-size:15px;margin-top:14px">Ações por pessoa</div>' +
+    '<div class="profile-list">' + pessoasHtml + '</div>' +
+    (pessoasHtml ? '' : '<div class="empty-note">Ninguém registrou entrada/saída ainda.</div>');
+}
+function renderCadastroAuditoria(state, ui){
+  var log = (state.auditLog || []).slice().reverse().slice(0, 100);
+  var rows = log.map(function(a){
+    var d = new Date(a.em);
+    var quando = isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR');
+    return '<div class="cad-row categoria-row" style="align-items:flex-start;flex-direction:column;gap:2px">' +
+      '<span style="font-size:13px">' + escHtml(a.descricao) + '</span><small style="color:var(--muted)">' + escHtml(quando) + '</small>' +
+    '</div>';
+  }).join('');
+  return '' +
+    '<div class="section-title" style="font-size:15px">Auditoria</div>' +
+    '<div style="font-size:12px;color:var(--muted)">Cada linha é gravada com a autoria confirmada pelo login de quem fez a ação (não é possível registrar em nome de outra pessoa).</div>' +
+    '<div class="profile-list">' + rows + '</div>' +
+    (log.length ? '' : '<div class="empty-note">Nenhuma ação registrada ainda.</div>');
+}
+function renderCadastro(state, ui){
+  var sub = ui.cadastroSub || 'produtos';
+  var body = sub==='resumo' ? renderCadastroResumo(state, ui) : (sub==='categorias' ? renderCadastroCategorias(state, ui) : (sub==='usuarios' ? renderCadastroUsuarios(state, ui) : (sub==='dados' ? renderCadastroDados(state, ui) : (sub==='auditoria' ? renderCadastroAuditoria(state, ui) : renderCadastroProdutos(state, ui)))));
+  return '<div class="section-title">Cadastro</div>' + renderCadastroSubChips(ui) + body;
+}
+function renderRoot(state, ui){
+  var panel = '';
+  var tab = (ui.tab==='cadastro' && !isAdmin()) ? 'estoque' : ui.tab;
+  if(tab==='estoque') panel = renderEstoque(state, ui);
+  else if(tab==='entrada') panel = renderMovForm(state, ui, 'entrada');
+  else if(tab==='saida') panel = renderMovForm(state, ui, 'saida');
+  else if(tab==='cadastro') panel = renderCadastro(state, ui);
+  else panel = renderHistorico(state, ui);
+  return renderTopBar(state, ui) + renderAlertaEstoque(state, ui) + renderAlertaArquivo(state, ui) + renderPendingBanner(ui) +
+    '<div class="content">' + panel + '</div>' + renderTabBar(state, ui) + renderModal(state, ui);
+}
+
+/* ---------------------------------------------------------------------
+   TELA DE LOGIN / CRIAR CONTA
+--------------------------------------------------------------------- */
+function renderAuthScreen(){
+  if(auth.screen==='recuperar') return renderRecuperarSenhaScreen();
+  if(auth.screen==='nova-senha') return renderNovaSenhaScreen();
+  var ehLogin = auth.screen==='entrar';
+  return '' +
+  '<div class="auth-wrap"><div class="auth-box">' +
+    '<div class="auth-title">Despensa Digital</div>' +
+    '<div class="auth-sub">Controle de estoque da cozinha e limpeza da escola</div>' +
+    '<div class="auth-tabs">' +
+      '<button class="auth-tab" type="button" data-action="auth-tab" data-tab="entrar" aria-pressed="' + (ehLogin?'true':'false') + '">Entrar</button>' +
+      '<button class="auth-tab" type="button" data-action="auth-tab" data-tab="criar" aria-pressed="' + (!ehLogin?'true':'false') + '">Criar conta</button>' +
+    '</div>' +
+    (auth.error ? '<div class="auth-error">' + escHtml(auth.error) + '</div>' : '') +
+    (auth.info ? '<div class="auth-info">' + escHtml(auth.info) + '</div>' : '') +
+    (ehLogin ? '' : '<div class="field"><label>Seu nome</label><input type="text" value="' + escHtml(auth.formNome) + '" data-field="auth-nome" placeholder="Ex.: Maria da Cozinha"></div>') +
+    '<div class="field"><label>E-mail</label><input type="email" value="' + escHtml(auth.formEmail) + '" data-field="auth-email" placeholder="seu@email.com" autocomplete="username"></div>' +
+    '<div class="field"><label>Senha</label><input type="password" value="' + escHtml(auth.formSenha) + '" data-field="auth-senha" placeholder="Mínimo 6 caracteres" autocomplete="' + (ehLogin?'current-password':'new-password') + '"></div>' +
+    (ehLogin ? '' :
+      '<div class="field"><label>Confirmar senha</label><input type="password" value="' + escHtml(auth.formSenha2) + '" data-field="auth-senha2" placeholder="Repita a senha"></div>' +
+      '<div class="field"><label>Sua área principal</label><select data-field="auth-area">' +
+        '<option value="cozinha"' + (auth.formArea==='cozinha'?' selected':'') + '>Cozinha</option>' +
+        '<option value="limpeza"' + (auth.formArea==='limpeza'?' selected':'') + '>Limpeza</option>' +
+      '</select></div>' +
+      '<div class="field-hint">Se você for a primeira pessoa a criar conta no sistema, vira administrador(a) automaticamente. As próximas entram como "padrão" e um admin ajusta o papel depois.</div>'
+    ) +
+    (ehLogin ?
+      '<button class="btn btn-primary" type="button" data-action="fazer-login"' + (auth.loading?' disabled':'') + '>Entrar</button>'
+      :
+      '<button class="btn btn-primary" type="button" data-action="criar-conta"' + (auth.loading?' disabled':'') + '>Criar conta</button>'
+    ) +
+    (ehLogin ? '<button class="btn btn-ghost" type="button" data-action="ir-recuperar"' + (auth.loading?' disabled':'') + '>Esqueci minha senha</button>' : '') +
+  '</div></div>';
+}
+function renderRecuperarSenhaScreen(){
+  return '' +
+  '<div class="auth-wrap"><div class="auth-box">' +
+    '<div class="auth-title">Recuperar senha</div>' +
+    '<div class="auth-sub">Vamos te enviar um link por e-mail para você criar uma senha nova.</div>' +
+    (auth.error ? '<div class="auth-error">' + escHtml(auth.error) + '</div>' : '') +
+    (auth.info ? '<div class="auth-info">' + escHtml(auth.info) + '</div>' : '') +
+    '<div class="field"><label>E-mail</label><input type="email" value="' + escHtml(auth.formEmail) + '" data-field="auth-email" placeholder="seu@email.com" autocomplete="username"></div>' +
+    '<button class="btn btn-primary" type="button" data-action="enviar-recuperacao"' + (auth.loading?' disabled':'') + '>Enviar link por e-mail</button>' +
+    '<button class="btn btn-ghost" type="button" data-action="voltar-login"' + (auth.loading?' disabled':'') + '>Voltar para entrar</button>' +
+  '</div></div>';
+}
+function renderNovaSenhaScreen(){
+  return '' +
+  '<div class="auth-wrap"><div class="auth-box">' +
+    '<div class="auth-title">Criar nova senha</div>' +
+    '<div class="auth-sub">Escolha uma senha nova para a sua conta.</div>' +
+    (auth.error ? '<div class="auth-error">' + escHtml(auth.error) + '</div>' : '') +
+    (auth.info ? '<div class="auth-info">' + escHtml(auth.info) + '</div>' : '') +
+    '<div class="field"><label>Nova senha</label><input type="password" value="' + escHtml(auth.formSenhaNova) + '" data-field="auth-senha-nova" placeholder="Mínimo 6 caracteres" autocomplete="new-password" autofocus></div>' +
+    '<div class="field"><label>Confirmar nova senha</label><input type="password" value="' + escHtml(auth.formSenhaNova2) + '" data-field="auth-senha-nova2" placeholder="Repita a senha" autocomplete="new-password"></div>' +
+    '<button class="btn btn-primary" type="button" data-action="salvar-nova-senha"' + (auth.loading?' disabled':'') + '>Salvar nova senha</button>' +
+  '</div></div>';
+}
+
+function paintAuth(){
+  document.getElementById('root').innerHTML = renderAuthScreen();
+}
+function paint(){
+  if(!auth.session){ paintAuth(); return; }
+  document.getElementById('root').innerHTML = renderRoot(state, ui);
+}
+function debounce(fn, delayMs){
+  var timer = null;
+  return function(){ var args = arguments, ctx = this; clearTimeout(timer); timer = setTimeout(function(){ fn.apply(ctx, args); }, delayMs); };
+}
+var paintDebounced = debounce(paint, 150);
+function refocusPos(sel, pos){ requestAnimationFrame(function(){ var el = document.querySelector(sel); if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(e){} } }); }
+var paintBuscaDebounced = debounce(function(sel, pos){ paint(); refocusPos(sel, pos); }, 150);
+
+function switchTab(tab){
+  if(['estoque','entrada','saida','historico','cadastro'].indexOf(tab)===-1) tab = 'estoque';
+  ui.tab = tab;
+  paint();
+}
+function findItem(id){ return state.items.filter(function(i){return i.id===id;})[0]; }
+
+/* ---------------------------------------------------------------------
+   CARREGAMENTO DE DADOS DO SUPABASE
+--------------------------------------------------------------------- */
+function mapItem(row, catsById){
+  var cat = catsById[row.category_id];
+  return { id: row.id, name: row.name, cat: cat ? cat.nome : '', category_id: row.category_id, unit: row.unit, qty: Number(row.qty), min: Number(row.min), criadoPor: row.criado_por, criadoEm: row.criado_em, ajustadoPor: row.ajustado_por, ajustadoEm: row.ajustado_em };
+}
+function mapMovement(row){
+  return { id: row.id, itemId: row.item_id, type: row.type, qty: Number(row.qty), unidade: row.unidade, who: row.who_name, whoId: row.who_id, fornecedor: row.fornecedor, motivo: row.motivo, nota: row.nota, at: row.at, estornado: row.estornado, estornadoPor: row.estornado_por_nome, estornadoEm: row.estornado_em };
+}
+async function carregarTudo(){
+  var catsRes = await sb.from('categories').select('*').order('nome');
+  if(catsRes.error) throw catsRes.error;
+  var catsById = {};
+  catsRes.data.forEach(function(c){ catsById[c.id] = c; });
+  state.categorias = catsRes.data;
+
+  var itemsRes = await sb.from('items').select('*');
+  if(itemsRes.error) throw itemsRes.error;
+  state.items = itemsRes.data.map(function(row){ return mapItem(row, catsById); });
+
+  var movsRes = await sb.from('movements').select('*').order('at', {ascending:false}).limit(2000);
+  if(movsRes.error) throw movsRes.error;
+  state.movements = movsRes.data.map(mapMovement);
+
+  var settingsRes = await sb.from('settings').select('*').eq('id', true).single();
+  if(!settingsRes.error && settingsRes.data){
+    state.schoolName = settingsRes.data.school_name;
+    state.arquivoMeses = settingsRes.data.arquivo_meses;
+    state.ultimaExportacaoEm = settingsRes.data.ultima_exportacao_em;
+  }
+
+  var profilesRes = await sb.from('profiles').select('*').order('created_at');
+  if(!profilesRes.error){
+    state.profiles = profilesRes.data;
+    // Ressincroniza o perfil do usuário logado com o que está no banco agora:
+    // sem isso, se o próprio papel/área mudar (auto-rebaixamento, ou outro
+    // admin editando essa pessoa), a tela continuaria usando a versão antiga
+    // (guardada só no login) e mostraria abas/ações que não deveriam mais existir.
+    if(auth.session){
+      var perfilAtualizado = state.profiles.filter(function(p){ return p.id === auth.session.user.id; })[0];
+      if(perfilAtualizado){
+        auth.profile = perfilAtualizado;
+      } else {
+        // A pessoa foi removida (por outro admin, ou removeu a si mesma) enquanto
+        // estava com a tela aberta: desconecta e volta pra tela de login.
+        desligarRealtime();
+        auth.session = null; auth.profile = null; auth.info = 'Seu acesso foi removido por um administrador.';
+        throw { message: 'Sua conta foi removida.' };
+      }
+    }
+  }
+
+  if(isAdmin()){
+    var auditRes = await sb.from('audit_log').select('*').order('em', {ascending:false}).limit(300);
+    if(!auditRes.error){ state.auditLog = auditRes.data; }
+    var mapaPlanilhaRes = await sb.from('planilha_merenda_mapa').select('*');
+    if(!mapaPlanilhaRes.error){ state.planilhaMapa = mapaPlanilhaRes.data; }
+  } else {
+    state.auditLog = [];
+    state.planilhaMapa = [];
+  }
+}
+function generoPlanilhaDoItem(state, itemId){
+  var m = (state.planilhaMapa||[]).filter(function(x){ return x.item_id===itemId; })[0];
+  return m ? m.genero_planilha : '';
+}
+async function carregarPerfil(userId){
+  var res = await sb.from('profiles').select('*').eq('id', userId).single();
+  if(res.error) return null;
+  return res.data;
+}
+
+var realtimeChannel = null;
+function ligarRealtime(){
+  if(realtimeChannel) return;
+  realtimeChannel = sb.channel('despensa-mudancas')
+    .on('postgres_changes', {event:'*', schema:'public', table:'items'}, function(){ recarregarSilencioso(); })
+    .on('postgres_changes', {event:'*', schema:'public', table:'movements'}, function(){ recarregarSilencioso(); })
+    .on('postgres_changes', {event:'*', schema:'public', table:'categories'}, function(){ recarregarSilencioso(); })
+    .on('postgres_changes', {event:'*', schema:'public', table:'profiles'}, function(){ recarregarSilencioso(); })
+    .on('postgres_changes', {event:'*', schema:'public', table:'settings'}, function(){ recarregarSilencioso(); })
+    .subscribe();
+}
+function desligarRealtime(){
+  if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+}
+var recarregarTimer = null;
+function recarregarSilencioso(){
+  clearTimeout(recarregarTimer);
+  recarregarTimer = setTimeout(async function(){
+    try{ await carregarTudo(); paint(); }catch(e){}
+  }, 400);
+}
+
+/* ---------------------------------------------------------------------
+   TRADUÇÃO DE ERROS — o banco de dados e a rede às vezes devolvem
+   mensagens técnicas em inglês (ex.: violação de política de segurança,
+   chave duplicada, falha de rede). Quem está usando o app no dia a dia
+   não precisa ver isso: aqui a gente reconhece os formatos técnicos mais
+   comuns e troca por uma frase simples em português. Mensagens que o
+   PRÓPRIO sistema já escreve em português (vindas das funções do banco,
+   como "sem permissão para esta área") não batem em nenhum desses
+   padrões em inglês, então passam direto sem alteração.
+--------------------------------------------------------------------- */
+function traduzErroAcao(msg){
+  if(!msg) return 'Não foi possível salvar agora. Tente de novo em instantes.';
+  if(/row-level security policy/i.test(msg)) return 'Você não tem permissão para fazer isso.';
+  if(/duplicate key value violates unique constraint/i.test(msg)) return 'Já existe um registro com esse nome.';
+  if(/violates foreign key constraint/i.test(msg)) return 'Não é possível concluir: ainda existe algo vinculado a isso.';
+  if(/violates check constraint|invalid input value for enum/i.test(msg)) return 'Um dos valores informados não é válido.';
+  if(/failed to fetch|networkerror|network request failed|load failed|err_internet|err_connection|err_name_not_resolved/i.test(msg)) return 'Sem conexão com a internet agora. Verifique e tente de novo.';
+  if(/jwt expired|invalid jwt|refresh_token_not_found|invalid refresh token/i.test(msg)) return 'Sua sessão expirou. Saia e entre de novo.';
+  if(/permission denied for|relation .* does not exist|syntax error at or near|column .* does not exist/i.test(msg)) return 'Algo deu errado ao salvar. Tente de novo, e avise o administrador do sistema se continuar acontecendo.';
+  return msg;
+}
+
+/* ---------------------------------------------------------------------
+   AÇÕES QUE MEXEM NO BANCO — cada uma trata erro isoladamente; se falhar
+   a pessoa recebe um aviso e pode tentar de novo (não há mais o modelo
+   antigo de "publicar o HTML inteiro de novo").
+--------------------------------------------------------------------- */
+async function executarAcao(fn, msgSucesso, msgErroPadrao){
+  ui.saving = true; paint();
+  try{
+    await fn();
+    ui.saving = false;
+    if(msgSucesso) toast(msgSucesso);
+    await carregarTudo();
+    paint();
+    return true;
+  }catch(err){
+    ui.saving = false;
+    var msg = (err && err.message) ? traduzErroAcao(err.message) : (msgErroPadrao || 'Não foi possível salvar. Tente de novo.');
+    toast(msg);
+    paint();
+    return false;
+  }
+}
+
+async function arquivarAntigos(){
+  if(!exigirAdmin()) return;
+  var paraArquivar = movimentacoesParaArquivar(state);
+  if(!paraArquivar.length){ toast('Não há movimentações antigas o suficiente para arquivar.'); return; }
+  var hoje = new Date().toISOString().slice(0,10);
+  try{
+    salvarDownloadBrowser('despensa-arquivo-movimentacoes-ate-' + hoje + '.csv', buildMovimentacoesCsv(state, paraArquivar));
+  }catch(e){
+    toast('Não foi possível gerar o arquivo antes de apagar. Arquivamento cancelado — nada foi apagado.');
+    return;
+  }
+  await executarAcao(async function(){
+    var res = await sb.rpc('arquivar_movimentos_antigos');
+    if(res.error) throw res.error;
+  }, 'Movimentações exportadas e arquivadas!');
+}
+async function exportarPlanilha(){
+  var hoje = new Date().toISOString().slice(0,10);
+  var mesArquivo = monthKey(new Date().toISOString());
+  try{
+    salvarDownloadBrowser('despensa-estoque-' + hoje + '.csv', buildEstoqueCsv(state));
+    salvarDownloadBrowser('despensa-movimentacoes-completo-' + mesArquivo + '.csv', buildMovimentacoesCsv(state));
+  }catch(e){ toast('Não foi possível exportar agora.'); return; }
+  await executarAcao(async function(){
+    var res = await sb.from('settings').update({ ultima_exportacao_em: new Date().toISOString() }).eq('id', true);
+    if(res.error) throw res.error;
+  }, 'Planilhas salvas! Dá pra abrir direto no Excel.');
+}
+function gerarListaContagem(){
+  try{
+    salvarDownloadBrowser('despensa-contagem-' + new Date().toISOString().slice(0,10) + '.csv', buildChecklistContagemCsv(state));
+    toast('Lista de contagem salva.');
+  }catch(e){ toast('Não foi possível gerar a lista agora.'); }
+}
+async function compartilharListaCompras(){
+  var texto = buildListaCompras(state);
+  if(navigator.share){ try{ await navigator.share({ text: texto }); return; }catch(e){} }
+  try{ await navigator.clipboard.writeText(texto); toast('Lista copiada! Cole no WhatsApp ou onde quiser enviar.'); }
+  catch(e){ toast('Não foi possível compartilhar automaticamente. Use Exportar para salvar uma cópia.'); }
+}
+async function registrarAuditoria(tipo, descricao){
+  try{ await sb.from('audit_log').insert({ tipo: tipo, descricao: descricao, actor_id: auth.session.user.id }); }catch(e){}
+}
+async function executarRemoverPerfil(pid){
+  await executarAcao(async function(){
+    var res = await sb.from('profiles').delete().eq('id', pid);
+    if(res.error) throw res.error;
+  }, 'Pessoa removida.');
+  ui.modal = null; paint();
+}
+async function executarSalvarEdicaoPerfil(id, dados){
+  await executarAcao(async function(){
+    var res = await sb.from('profiles').update({ name: dados.name, role: dados.role, area: dados.area }).eq('id', id);
+    if(res.error) throw res.error;
+    var detalhe = dados._detalhe || '';
+    await registrarAuditoria('perfil', quemAtual() + ' editou "' + dados.name + '"' + detalhe + '.');
+  }, 'Pessoa atualizada!');
+  ui.modal = null; paint();
+}
+async function executarSalvarNovoItem(name, catNome, catObj, unit, qty, min){
+  await executarAcao(async function(){
+    var res = await sb.from('items').insert({ name: name, category_id: catObj.id, unit: unit, qty: qty, min: min, criado_por: quemAtual() });
+    if(res.error) throw res.error;
+    await registrarAuditoria('produto', quemAtual() + ' cadastrou o produto "' + name + '" em ' + catNome + '.');
+  }, 'Produto cadastrado!');
+  ui.modal = null; ui.grupoFilter = 'todos'; ui.categoryFilter = catNome; switchTab('estoque');
+}
+
+/* ---------------------------------------------------------------------
+   EVENTOS DE CLIQUE
+--------------------------------------------------------------------- */
+function onClick(e){
+  var el = e.target.closest('[data-action]');
+  if(!el) return;
+  var action = el.getAttribute('data-action');
+
+  if(action==='noop') return;
+
+  /* --- tela de login/criar conta --- */
+  if(action==='auth-tab'){ auth.screen = el.getAttribute('data-tab'); auth.error=''; auth.info=''; paintAuth(); return; }
+  if(action==='fazer-login'){ fazerLogin(); return; }
+  if(action==='criar-conta'){ criarConta(); return; }
+  if(action==='ir-recuperar'){ auth.screen='recuperar'; auth.error=''; auth.info=''; paintAuth(); return; }
+  if(action==='voltar-login'){ auth.screen='entrar'; auth.error=''; auth.info=''; paintAuth(); return; }
+  if(action==='enviar-recuperacao'){ fazerRecuperacao(); return; }
+  if(action==='salvar-nova-senha'){ salvarNovaSenha(); return; }
+  if(action==='sair'){ sair(); return; }
+  if(action==='tentar-novamente-inicial'){ window.location.reload(); return; }
+  if(action==='abrir-conta'){ ui.modal = {type:'conta'}; paint(); return; }
+
+  if(action==='set-tab'){ ui.formItemId=''; ui.formQty=1; ui.formUnidade=''; ui.formFornecedor=''; ui.formMotivo=REASONS_SAIDA[0]; ui.formNota=''; switchTab(el.getAttribute('data-tab')); return; }
+  if(action==='ir-entrada'){ var itX = findItem(el.getAttribute('data-id')); ui.formItemId = el.getAttribute('data-id'); ui.formQty=1; ui.formUnidade = itX?itX.unit:''; ui.formFornecedor=''; ui.formMotivo=REASONS_SAIDA[0]; ui.formNota=''; switchTab('entrada'); return; }
+  if(action==='ir-saida'){ var itY = findItem(el.getAttribute('data-id')); ui.formItemId = el.getAttribute('data-id'); ui.formQty=1; ui.formUnidade = itY?itY.unit:''; ui.formFornecedor=''; ui.formMotivo=REASONS_SAIDA[0]; ui.formNota=''; switchTab('saida'); return; }
+  if(action==='set-cat'){ ui.categoryFilter = el.getAttribute('data-cat'); paint(); return; }
+  if(action==='set-grupo'){ ui.grupoFilter = el.getAttribute('data-grupo') || 'todos'; if(ui.categoryFilter!=='todas' && !categoriaVisivel(state, ui.categoryFilter, ui)) ui.categoryFilter = 'todas'; paint(); return; }
+  if(action==='toggle-low'){ ui.showLowOnly = !ui.showLowOnly; paint(); return; }
+  if(action==='ver-baixo-estoque'){ ui.showLowOnly = true; ui.categoryFilter = 'todas'; ui.grupoFilter='todos'; switchTab('estoque'); return; }
+  if(action==='close-modal'){ ui.modal = null; paint(); return; }
+  if(action==='set-cadastro-sub'){ ui.cadastroSub = el.getAttribute('data-sub') || 'produtos'; paint(); return; }
+  if(action==='ir-arquivar'){ if(!exigirAdmin()) return; ui.cadastroSub = 'dados'; switchTab('cadastro'); return; }
+  if(action==='arquivar-antigas'){ arquivarAntigos(); return; }
+  if(action==='salvar-prazo-arquivo'){
+    if(!exigirAdmin()) return;
+    var novoMeses = parseInt((document.querySelector('[data-field="arquivo-meses"]')||{}).value, 10);
+    if(!novoMeses || novoMeses<1){ toast('Informe um número de meses válido (mínimo 1).'); return; }
+    executarAcao(async function(){
+      var res = await sb.from('settings').update({ arquivo_meses: novoMeses }).eq('id', true);
+      if(res.error) throw res.error;
+      await registrarAuditoria('config', quemAtual() + ' alterou o prazo de arquivamento para ' + novoMeses + ' meses.');
+    }, 'Prazo de arquivamento atualizado!');
+    return;
+  }
+  if(action==='salvar-area-categoria'){
+    if(!exigirAdmin()) return;
+    var catId = el.getAttribute('data-cat-id');
+    var rowEl = el.closest('.cad-row');
+    var selEl = rowEl ? rowEl.querySelector('[data-field="cat-area-edit"]') : null;
+    var novaAreaCat = selEl ? selEl.value : 'cozinha';
+    if(novaAreaCat!=='cozinha' && novaAreaCat!=='limpeza') novaAreaCat = 'cozinha';
+    var catAlvo = state.categorias.filter(function(c){ return c.id===catId; })[0];
+    executarAcao(async function(){
+      var res = await sb.from('categories').update({ area: novaAreaCat }).eq('id', catId);
+      if(res.error) throw res.error;
+      await registrarAuditoria('categoria', quemAtual() + ' definiu a área de "' + (catAlvo?catAlvo.nome:'') + '" como ' + areaLabel(novaAreaCat) + '.');
+    }, 'Área da categoria salva!');
+    return;
+  }
+  if(action==='novo-item'){
+    if(!exigirAdmin()) return;
+    var catsList = categoriasEstado(state);
+    var catInicial = catsList.length ? nomeCategoria(catsList[0]) : '';
+    ui.modal = {type:'novo-item', cat:catInicial, unit:UNITS[0], qty:0, min:1};
+    paint();
+    return;
+  }
+  if(action==='ajustar-item'){ ui.modal = {type:'ajustar', id:el.getAttribute('data-id')}; paint(); return; }
+  if(action==='qty-step'){ var d = parseFloat(el.getAttribute('data-delta')); ui.formQty = round2(Math.max(0, (parseFloat(ui.formQty)||0) + d)); paint(); return; }
+  if(action==='adicionar-categoria'){
+    if(!exigirAdmin()) return;
+    var novaCat = ((document.querySelector('[data-field="cat-nova"]')||{}).value || '').trim();
+    var novaArea = ((document.querySelector('[data-field="cat-area"]')||{}).value || 'cozinha');
+    if(novaArea!=='cozinha' && novaArea!=='limpeza') novaArea = 'cozinha';
+    if(!novaCat){ toast('Digite o nome da categoria.'); return; }
+    var existe = state.categorias.filter(function(c){ return normalizar(c.nome)===normalizar(novaCat); })[0];
+    if(existe){ toast('Essa categoria já existe.'); return; }
+    executarAcao(async function(){
+      var res = await sb.from('categories').insert({ nome: novaCat, area: novaArea });
+      if(res.error) throw res.error;
+      await registrarAuditoria('categoria', quemAtual() + ' criou a categoria "' + novaCat + '" (' + areaLabel(novaArea) + ').');
+    }, 'Categoria adicionada!');
+    return;
+  }
+  if(action==='remover-categoria'){
+    if(!exigirAdmin()) return;
+    var catId2 = el.getAttribute('data-cat-id');
+    var catRem = el.getAttribute('data-cat');
+    var emUso = state.items.filter(function(it){ return it.cat===catRem; }).length;
+    if(emUso){ toast('Só dá para remover categoria sem produto.'); return; }
+    executarAcao(async function(){
+      var res = await sb.from('categories').delete().eq('id', catId2);
+      if(res.error) throw res.error;
+      await registrarAuditoria('categoria', quemAtual() + ' removeu a categoria "' + catRem + '".');
+    }, 'Categoria removida.');
+    if(ui.categoryFilter===catRem) ui.categoryFilter = 'todas';
+    return;
+  }
+  if(action==='editar-perfil'){
+    if(!exigirAdmin()) return;
+    var pidEdit = el.getAttribute('data-id');
+    var alvoEdit = state.profiles.filter(function(p){ return p.id===pidEdit; })[0];
+    if(!alvoEdit) return;
+    ui.modal = { type:'perfil-editar', id:pidEdit, name:alvoEdit.name, role:alvoEdit.role, area: alvoEdit.role==='padrao' ? alvoEdit.area : 'cozinha' };
+    paint();
+    return;
+  }
+  if(action==='remover-perfil'){
+    if(!exigirAdmin()) return;
+    var pidRem = el.getAttribute('data-id');
+    var alvoRem = state.profiles.filter(function(p){ return p.id===pidRem; })[0];
+    if(!alvoRem) return;
+    if(alvoRem.role==='admin'){
+      var totalAdminsRem = state.profiles.filter(function(p){ return p.role==='admin'; }).length;
+      if(totalAdminsRem<=1){ toast('Não é possível remover o único administrador.'); return; }
+    }
+    if(pidRem === auth.session.user.id){ ui.modal = { type:'confirmar-perfil', acao:'remover', id:pidRem, name:alvoRem.name }; paint(); return; }
+    registrarAuditoria('perfil', quemAtual() + ' removeu a pessoa "' + alvoRem.name + '".');
+    executarRemoverPerfil(pidRem);
+    return;
+  }
+  if(action==='confirmar-remover-proprio'){
+    if(!exigirAdmin()) return;
+    if(!ui.modal || ui.modal.type!=='confirmar-perfil') return;
+    registrarAuditoria('perfil', quemAtual() + ' removeu a própria conta.');
+    executarRemoverPerfil(ui.modal.id);
+    return;
+  }
+  if(action==='salvar-edicao-perfil'){
+    if(!exigirAdmin()) return;
+    var idEdit = el.getAttribute('data-id');
+    var peNome = ((document.querySelector('[data-field="pe-nome"]')||{}).value || '').trim();
+    if(!peNome){ toast('Digite o nome.'); return; }
+    var peRole = ((document.querySelector('[data-field="pe-role"]')||{}).value || 'padrao');
+    if(peRole!=='admin' && peRole!=='padrao') peRole = 'padrao';
+    var peArea = 'ambas';
+    if(peRole==='padrao'){ peArea = ((document.querySelector('[data-field="pe-area"]')||{}).value || 'cozinha'); if(peArea!=='cozinha' && peArea!=='limpeza' && peArea!=='ambas') peArea = 'cozinha'; }
+    var alvoEdit2 = state.profiles.filter(function(p){ return p.id===idEdit; })[0];
+    if(!alvoEdit2) return;
+    if(alvoEdit2.role==='admin' && peRole!=='admin'){
+      var totalAdminsEdit = state.profiles.filter(function(p){ return p.role==='admin'; }).length;
+      if(totalAdminsEdit<=1){ toast('Precisa existir pelo menos um administrador.'); return; }
+    }
+    var detalhe = (alvoEdit2.role==='admin' && peRole!=='admin') ? ' (rebaixado de administrador para padrão)' : ((alvoEdit2.role!=='admin' && peRole==='admin') ? ' (promovido a administrador)' : '');
+    var dadosEdit = {name:peNome, role:peRole, area:peArea, _detalhe: detalhe};
+    var estaSeRebaixando = (idEdit === auth.session.user.id) && alvoEdit2.role==='admin' && peRole!=='admin';
+    if(estaSeRebaixando){ ui.modal = { type:'confirmar-perfil', acao:'rebaixar', id:idEdit, name:peNome, dados:dadosEdit }; paint(); return; }
+    executarSalvarEdicaoPerfil(idEdit, dadosEdit);
+    return;
+  }
+  if(action==='confirmar-rebaixar-proprio'){
+    if(!exigirAdmin()) return;
+    if(!ui.modal || ui.modal.type!=='confirmar-perfil') return;
+    executarSalvarEdicaoPerfil(ui.modal.id, ui.modal.dados);
+    return;
+  }
+  if(action==='salvar-novo-item'){
+    if(!exigirAdmin()) return;
+    var name = ((document.querySelector('[data-field="ni-nome"]')||{}).value || '').trim();
+    if(!name){ toast('Digite o nome do item.'); return; }
+    var catNome = (document.querySelector('[data-field="ni-cat"]')||{}).value || nomeCategoria(categoriasEstado(state)[0]);
+    var catObj = state.categorias.filter(function(c){ return c.nome===catNome; })[0];
+    if(!catObj){ toast('Categoria inválida.'); return; }
+    var unit = (document.querySelector('[data-field="ni-un"]')||{}).value || UNITS[0];
+    var qty = round2(parseFloat((document.querySelector('[data-field="ni-qty"]')||{}).value) || 0);
+    var min = round2(parseFloat((document.querySelector('[data-field="ni-min"]')||{}).value) || 0);
+    var nomeParecido = state.items.filter(function(it){ return it.cat===catNome && normalizar(it.name)===normalizar(name); })[0];
+    if(nomeParecido){
+      ui.modal = { type:'confirmar-duplicado', nome:name, catNome:catNome, nomeExistente:nomeParecido.name, catObj:catObj, unit:unit, qty:qty, min:min };
+      paint();
+      return;
+    }
+    executarSalvarNovoItem(name, catNome, catObj, unit, qty, min);
+    return;
+  }
+  if(action==='confirmar-duplicado-cadastrar'){
+    if(!ui.modal || ui.modal.type!=='confirmar-duplicado') return;
+    var cd2 = ui.modal;
+    executarSalvarNovoItem(cd2.nome, cd2.catNome, cd2.catObj, cd2.unit, cd2.qty, cd2.min);
+    return;
+  }
+  if(action==='salvar-ajuste'){
+    var idAj = el.getAttribute('data-id');
+    var itAj = findItem(idAj);
+    var qty = parseFloat((document.querySelector('[data-field="aj-qty"]')||{}).value);
+    var min = parseFloat((document.querySelector('[data-field="aj-min"]')||{}).value);
+    var unField = document.querySelector('[data-field="aj-un"]');
+    var novaUnidade = (isAdmin() && unField) ? unField.value : null;
+    var generoField = document.querySelector('[data-field="aj-genero-planilha"]');
+    var novoGenero = generoField ? generoField.value.trim() : null;
+    var patch = { ajustado_por: quemAtual(), ajustado_em: new Date().toISOString() };
+    if(!isNaN(qty)) patch.qty = round2(Math.max(0,qty));
+    if(!isNaN(min)) patch.min = round2(Math.max(0,min));
+    if(novaUnidade) patch.unit = novaUnidade;
+    var partesAj = [];
+    if(itAj && !isNaN(qty) && round2(Math.max(0,qty))!==round2(itAj.qty)) partesAj.push('quantidade de ' + fmtQty(itAj.qty) + ' para ' + fmtQty(round2(Math.max(0,qty))) + ' ' + itAj.unit);
+    if(itAj && !isNaN(min) && round2(Math.max(0,min))!==round2(itAj.min)) partesAj.push('mínimo de ' + fmtQty(itAj.min) + ' para ' + fmtQty(round2(Math.max(0,min))) + ' ' + itAj.unit);
+    if(itAj && novaUnidade && novaUnidade!==itAj.unit) partesAj.push('unidade de ' + itAj.unit + ' para ' + novaUnidade);
+    executarAcao(async function(){
+      var res = await sb.from('items').update(patch).eq('id', idAj);
+      if(res.error) throw res.error;
+      if(partesAj.length && itAj){
+        await registrarAuditoria('ajuste', quemAtual() + ' corrigiu "' + itAj.name + '" — ' + partesAj.join('; ') + '.');
+      }
+      if(generoField){
+        if(novoGenero){
+          var upMapaRes = await sb.from('planilha_merenda_mapa').upsert({ item_id: idAj, genero_planilha: novoGenero, atualizado_por: quemAtual(), atualizado_em: new Date().toISOString() }, { onConflict: 'item_id' });
+          if(upMapaRes.error) throw upMapaRes.error;
+        } else {
+          var delMapaRes = await sb.from('planilha_merenda_mapa').delete().eq('item_id', idAj);
+          if(delMapaRes.error) throw delMapaRes.error;
+        }
+      }
+    }, 'Ajuste salvo!');
+    ui.modal = null; paint();
+    return;
+  }
+  if(action==='remover-item'){
+    if(!exigirAdmin()) return;
+    var idRemIt = el.getAttribute('data-id');
+    var itRemIt = findItem(idRemIt);
+    executarAcao(async function(){
+      var res = await sb.from('items').delete().eq('id', idRemIt);
+      if(res.error) throw res.error;
+      if(itRemIt) await registrarAuditoria('produto', quemAtual() + ' removeu o produto "' + itRemIt.name + '" (' + itRemIt.cat + ').');
+    }, 'Item removido.');
+    ui.modal = null; paint();
+    return;
+  }
+  if(action==='estornar-mov'){
+    var movId = el.getAttribute('data-id');
+    executarAcao(async function(){
+      var res = await sb.rpc('estornar_movimento', { p_mov_id: movId });
+      if(res.error) throw res.error;
+    }, 'Movimentação desfeita!');
+    return;
+  }
+  if(action==='exportar-planilha'){ exportarPlanilha(); return; }
+  if(action==='gerar-contagem'){ gerarListaContagem(); return; }
+  if(action==='compartilhar-compras'){ compartilharListaCompras(); return; }
+  if(action==='confirmar-mov'){
+    var kind = el.getAttribute('data-kind2');
+    var itemId = ui.formItemId;
+    var item = findItem(itemId);
+    if(!item){ toast('Selecione um item.'); return; }
+    var qtyMov = parseFloat(ui.formQty);
+    if(!qtyMov || qtyMov<=0){ toast('Informe uma quantidade maior que zero.'); return; }
+    var unidade = item.unit;
+    var fornecedor = (ui.formFornecedor||'').trim();
+    if(kind==='entrada' && !fornecedor){ toast('Informe o fornecedor para registrar a entrada.'); return; }
+    executarAcao(async function(){
+      var res = await sb.rpc('registrar_movimento', {
+        p_item_id: itemId, p_tipo: kind, p_qty: qtyMov, p_unidade: unidade,
+        p_fornecedor: kind==='entrada' ? fornecedor : '', p_motivo: kind==='saida' ? ui.formMotivo : '', p_nota: ui.formNota || ''
+      });
+      if(res.error) throw res.error;
+    }, kind==='entrada' ? 'Entrada registrada!' : 'Saída registrada!');
+    ui.formItemId=''; ui.formQty=1; ui.formUnidade=''; ui.formFornecedor=''; ui.formMotivo=REASONS_SAIDA[0]; ui.formNota='';
+    return;
+  }
+}
+
+function onInput(e){
+  var el = e.target;
+  var field = el.getAttribute && el.getAttribute('data-field');
+  if(!field) return;
+  if(field==='search'){ ui.search = el.value; paintBuscaDebounced('[data-field="search"]', el.selectionStart); return; }
+  if(field==='hist-search'){ ui.histSearch = el.value; paintBuscaDebounced('[data-field="hist-search"]', el.selectionStart); return; }
+  if(field==='user-search'){ ui.userSearch = el.value; paintBuscaDebounced('[data-field="user-search"]', el.selectionStart); return; }
+  if(field==='form-item'){ ui.formItemId = el.value; ui.formQty=1; ui.formFornecedor=''; ui.formMotivo=REASONS_SAIDA[0]; ui.formNota=''; var picked = findItem(el.value); ui.formUnidade = picked ? picked.unit : ''; paint(); return; }
+  if(field==='form-qty'){ ui.formQty = el.value; return; }
+  if(field==='form-fornecedor'){ ui.formFornecedor = el.value; return; }
+  if(field==='form-motivo'){ ui.formMotivo = el.value; return; }
+  if(field==='form-nota'){ ui.formNota = el.value; return; }
+  if(field==='ni-nome' && ui.modal){ ui.modal.name = el.value; return; }
+  if(field==='ni-cat' && ui.modal){ ui.modal.cat = el.value; return; }
+  if(field==='ni-un' && ui.modal){ ui.modal.unit = el.value; return; }
+  if(field==='ni-qty' && ui.modal){ ui.modal.qty = el.value; return; }
+  if(field==='ni-min' && ui.modal){ ui.modal.min = el.value; return; }
+  if(field==='pe-nome' && ui.modal){ ui.modal.name = el.value; return; }
+  if(field==='pe-role' && ui.modal){ ui.modal.role = el.value; paint(); return; }
+  if(field==='pe-area' && ui.modal){ ui.modal.area = el.value; return; }
+  if(field==='auth-email'){ auth.formEmail = el.value; return; }
+  if(field==='auth-senha'){ auth.formSenha = el.value; return; }
+  if(field==='auth-senha2'){ auth.formSenha2 = el.value; return; }
+  if(field==='auth-nome'){ auth.formNome = el.value; return; }
+  if(field==='auth-area'){ auth.formArea = el.value; return; }
+  if(field==='auth-senha-nova'){ auth.formSenhaNova = el.value; return; }
+  if(field==='auth-senha-nova2'){ auth.formSenhaNova2 = el.value; return; }
+}
+
+/* ---------------------------------------------------------------------
+   AUTENTICAÇÃO
+--------------------------------------------------------------------- */
+function traduzErroAuth(msg){
+  if(!msg) return 'Não foi possível concluir. Tente de novo.';
+  if(/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
+  if(/Email not confirmed/i.test(msg)) return 'Confirme seu e-mail antes de entrar (veja o link que te enviamos).';
+  if(/User already registered/i.test(msg)) return 'Já existe uma conta com esse e-mail. Tente entrar em vez de criar conta.';
+  if(/Password should be at least/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if(/Unable to validate email address/i.test(msg)) return 'Digite um e-mail válido.';
+  return msg;
+}
+async function fazerLogin(){
+  auth.error=''; auth.info='';
+  var email = (auth.formEmail||'').trim();
+  var senha = auth.formSenha||'';
+  if(!email || !senha){ auth.error = 'Preencha e-mail e senha.'; paintAuth(); return; }
+  auth.loading = true; paintAuth();
+  var res = await sb.auth.signInWithPassword({ email: email, password: senha });
+  auth.loading = false;
+  if(res.error){ auth.error = traduzErroAuth(res.error.message); paintAuth(); return; }
+  await entrarComSessao(res.data.session);
+}
+async function criarConta(){
+  auth.error=''; auth.info='';
+  var nome = (auth.formNome||'').trim();
+  var email = (auth.formEmail||'').trim();
+  var senha = auth.formSenha||'';
+  var senha2 = auth.formSenha2||'';
+  if(!nome){ auth.error = 'Digite seu nome.'; paintAuth(); return; }
+  if(!email){ auth.error = 'Digite seu e-mail.'; paintAuth(); return; }
+  if(senha.length < 6){ auth.error = 'A senha precisa ter pelo menos 6 caracteres.'; paintAuth(); return; }
+  if(senha !== senha2){ auth.error = 'As senhas não são iguais.'; paintAuth(); return; }
+  auth.loading = true; paintAuth();
+  var res = await sb.auth.signUp({ email: email, password: senha, options: { data: { name: nome, area: auth.formArea } } });
+  auth.loading = false;
+  if(res.error){ auth.error = traduzErroAuth(res.error.message); paintAuth(); return; }
+  if(res.data && res.data.session){
+    await entrarComSessao(res.data.session);
+  } else {
+    auth.screen = 'entrar';
+    auth.info = 'Conta criada! Verifique seu e-mail e clique no link de confirmação, depois volte aqui e entre.';
+    auth.formSenha=''; auth.formSenha2='';
+    paintAuth();
+  }
+}
+async function fazerRecuperacao(){
+  auth.error=''; auth.info='';
+  var email = (auth.formEmail||'').trim();
+  if(!email){ auth.error = 'Digite seu e-mail.'; paintAuth(); return; }
+  auth.loading = true; paintAuth();
+  await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  auth.loading = false;
+  auth.screen = 'entrar';
+  auth.info = 'Se esse e-mail estiver cadastrado, enviamos um link para redefinir a senha. Verifique sua caixa de entrada.';
+  paintAuth();
+}
+async function salvarNovaSenha(){
+  auth.error='';
+  var senha = auth.formSenhaNova||''; var senha2 = auth.formSenhaNova2||'';
+  if(senha.length < 6){ auth.error = 'A senha precisa ter pelo menos 6 caracteres.'; paintAuth(); return; }
+  if(senha !== senha2){ auth.error = 'As senhas não são iguais.'; paintAuth(); return; }
+  auth.loading = true; paintAuth();
+  var res = await sb.auth.updateUser({ password: senha });
+  auth.loading = false;
+  if(res.error){ auth.error = traduzErroAuth(res.error.message); paintAuth(); return; }
+  auth.formSenhaNova=''; auth.formSenhaNova2='';
+  toast('Senha alterada com sucesso!');
+  vindoDeRecuperacaoSenha = false;
+  await entrarComSessao((res.data && res.data.session) || auth.session);
+}
+async function sair(){
+  desligarRealtime();
+  await sb.auth.signOut();
+  auth.session = null; auth.profile = null; ui.modal = null;
+  auth.formEmail=''; auth.formSenha=''; auth.formNome=''; auth.formSenha2=''; auth.formSenhaNova=''; auth.formSenhaNova2=''; auth.screen='entrar'; auth.info=''; auth.error='';
+  paintAuth();
+}
+async function entrarComSessao(session){
+  auth.session = session;
+  auth.profile = await carregarPerfil(session.user.id);
+  if(!auth.profile){
+    auth.error = 'Sua conta existe mas o perfil não foi encontrado. Fale com um administrador.';
+    auth.session = null;
+    paintAuth();
+    return;
+  }
+  try{
+    await carregarTudo();
+  }catch(e){
+    toast('Entrou, mas não consegui carregar os dados agora. Puxe a tela para atualizar.');
+  }
+  ligarRealtime();
+  paint();
+}
+
+/* ---------------------------------------------------------------------
+   INICIALIZAÇÃO
+--------------------------------------------------------------------- */
+async function mount(){
+  var root = document.getElementById('root');
+  root.addEventListener('click', onClick);
+  root.addEventListener('input', onInput);
+
+  sb.auth.onAuthStateChange(function(event, session){
+    if(event === 'SIGNED_OUT'){
+      auth.session = null; auth.profile = null;
+      paintAuth();
+    }
+    if(event === 'PASSWORD_RECOVERY'){
+      vindoDeRecuperacaoSenha = false;
+      auth.session = session; auth.screen = 'nova-senha'; auth.error=''; auth.info='';
+      auth.loading = false;
+      paintAuth();
+    }
+  });
+
+  try{
+    var sessRes = await comTimeout(sb.auth.getSession(), 15000);
+    var session = sessRes && sessRes.data ? sessRes.data.session : null;
+    if(session && vindoDeRecuperacaoSenha){
+      vindoDeRecuperacaoSenha = false;
+      auth.session = session; auth.screen = 'nova-senha'; auth.error=''; auth.info='';
+      auth.loading = false;
+      paintAuth();
+    } else if(session){
+      await comTimeout(entrarComSessao(session), 20000);
+    } else {
+      auth.loading = false;
+      paintAuth();
+    }
+  }catch(e){
+    paintErroInicial();
+  }
+}
+// Faz uma promessa "desistir" depois de ms milissegundos, pra tela inicial
+// nunca ficar travada em "Carregando..." pra sempre se a internet cair ou o
+// Supabase demorar demais pra responder.
+function comTimeout(promise, ms){
+  return new Promise(function(resolve, reject){
+    var jaResolveu = false;
+    var timer = setTimeout(function(){
+      if(jaResolveu) return;
+      jaResolveu = true;
+      reject(new Error('tempo esgotado'));
+    }, ms);
+    promise.then(function(v){
+      if(jaResolveu) return;
+      jaResolveu = true;
+      clearTimeout(timer);
+      resolve(v);
+    }, function(err){
+      if(jaResolveu) return;
+      jaResolveu = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+function paintErroInicial(){
+  document.getElementById('root').innerHTML =
+    '<div class="auth-wrap"><div class="auth-box">' +
+      '<div class="auth-title">Não foi possível carregar</div>' +
+      '<div class="auth-sub">A conexão demorou demais ou falhou. Verifique sua internet e tente de novo.</div>' +
+      '<button class="btn btn-primary" type="button" data-action="tentar-novamente-inicial">Tentar novamente</button>' +
+    '</div></div>';
+}
+
+if(!window.__DESPENSA_SKIP_AUTOMOUNT__){
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', mount); }
+  else { mount(); }
+}
+</script>
+</body>
+</html>

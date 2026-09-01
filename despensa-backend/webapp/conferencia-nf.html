@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Importar Nota Fiscal — Despensa Digital</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F6F5C">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F6F5; --surface:#FFFFFF; --surface-2:#EDF1EF; --ink:#1F2A28; --muted:#5B6B67;
+    --line:#DCE3E1; --accent:#1F6F5C; --accent-ink:#0F3E33; --accent-soft:#E4F0EC;
+    --warn:#A8660F; --warn-soft:#FBEDD8; --crit:#B3392C; --crit-soft:#FBE4E1;
+    --shadow: 0 1px 2px rgba(20,30,28,0.06), 0 4px 14px rgba(20,30,28,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121716; --surface:#1B2422; --surface-2:#212B29; --ink:#E9EEEC; --muted:#9BAAA6;
+      --line:#2B3634; --accent:#4FBF9E; --accent-ink:#DFF6EE; --accent-soft:#1E3530;
+      --warn:#E0A542; --warn-soft:#3A2C15; --crit:#E2695C; --crit-soft:#3A211D;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.35);
+    }
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Public Sans', system-ui, -apple-system, sans-serif; -webkit-font-smoothing:antialiased; }
+  #root{ max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding:0 0 40px; }
+  .label{ font-family:'Barlow Condensed', system-ui, sans-serif; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; font-size:12px; color:var(--muted); }
+  .brand-name{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:700; font-size:20px; line-height:1; color:var(--accent-ink); }
+  .section-title{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:17px; color:var(--ink); }
+  .topbar{ display:flex; align-items:center; gap:10px; padding:16px; border-bottom:1px solid var(--line); background:var(--surface); position:sticky; top:0; z-index:5; }
+  .voltar-link{ color:var(--accent); text-decoration:none; font-weight:700; font-size:14px; white-space:nowrap; }
+  #conteudo{ padding:16px; display:flex; flex-direction:column; gap:16px; }
+  .form{ display:flex; flex-direction:column; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:13px; font-weight:600; color:var(--muted); }
+  select, input[type="text"], input[type="number"]{ border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; padding:11px 12px; font-size:16px; font-family:inherit; width:100%; }
+  .btn{ border:none; border-radius:12px; padding:13px 16px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:disabled{ opacity:0.5; cursor:default; }
+  .btn-ghost{ background:var(--surface-2); color:var(--ink); }
+  .btn-sm{ padding:8px 12px; font-size:13px; border-radius:9px; }
+  .upload-box{ border:2px dashed var(--line); border-radius:14px; padding:28px 16px; text-align:center; background:var(--surface); display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .thumb{ max-width:100%; max-height:260px; border-radius:10px; border:1px solid var(--line); object-fit:contain; }
+  .warn-box{ background:var(--warn-soft); color:var(--warn); border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; }
+  .crit-box{ background:var(--crit-soft); color:var(--crit); border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; }
+  .info-box{ background:var(--accent-soft); color:var(--accent-ink); border-radius:10px; padding:10px 12px; font-size:13px; }
+  .nf-item-row{ border:1px solid var(--line); background:var(--surface); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .nf-item-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .nf-item-nome{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:16px; }
+  .nf-item-cod{ font-size:12px; color:var(--muted); }
+  .badge{ font-size:11px; font-weight:700; border-radius:6px; padding:3px 7px; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; }
+  .badge-existente{ background:var(--accent-soft); color:var(--accent-ink); }
+  .badge-novo{ background:var(--warn-soft); color:var(--warn); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .spinner{ width:22px; height:22px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--accent); animation:spin 0.8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .rodape-fixo{ position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:12px 16px; display:flex; flex-direction:column; gap:8px; box-shadow:0 -4px 14px rgba(20,30,28,0.06); }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:10px; font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:all .2s; z-index:50; max-width:90%; text-align:center; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+  .muted-note{ font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="topbar">
+    <a class="voltar-link" href="index.html">&larr; Voltar</a>
+    <span class="brand-name">Importar Nota Fiscal</span>
+  </div>
+  <div id="conteudo"></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ---------------------------------------------------------------------
+   Mesma conexão do app principal — como esta página é servida do mesmo
+   endereço (mesmo domínio), a sessão de quem já está logado no app
+   principal é reaproveitada automaticamente (fica salva no navegador).
+--------------------------------------------------------------------- */
+var SUPABASE_URL = "https://jqmnboteogreoomayxpo.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxbW5ib3Rlb2dyZW9vbWF5eHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDM1MTUsImV4cCI6MjEwMzAxOTUxNX0.FbpvWGxMXmaJxhz2NDOv4hDmA5ttmrLYfZTUFEEVv_c";
+var sb = (window.__DESPENSA_TEST_CLIENT__) ? window.__DESPENSA_TEST_CLIENT__ : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+var UNITS = ['kg','L','un','pacote','cx','garrafa'];
+
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtQty(n){ var v = Math.round((parseFloat(n)||0)*100)/100; return v.toLocaleString('pt-BR', {maximumFractionDigits:2}); }
+function round2(n){ return Math.round((parseFloat(n)||0)*100)/100; }
+function normalizar(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function cnpjDigits(s){ return String(s==null?'':s).replace(/\D/g,''); }
+var toastTimer = null;
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+}
+function traduzErro(msg){
+  if(!msg) return 'Não foi possível concluir agora. Tente de novo.';
+  if(/row-level security policy/i.test(msg)) return 'Você não tem permissão para fazer isso.';
+  if(/failed to fetch|networkerror|load failed/i.test(msg)) return 'Sem conexão com a internet agora.';
+  if(/jwt expired|invalid jwt|invalid refresh token/i.test(msg)) return 'Sua sessão expirou. Volte ao app e entre de novo.';
+  return msg;
+}
+
+/* ---------------------------------------------------------------------
+   ESTADO
+--------------------------------------------------------------------- */
+var state = {
+  carregando: true,
+  autenticado: false,
+  admin: false,
+  nomeAdmin: '',
+  categorias: [],       // [{id, nome, area}]
+  items: [],             // [{id, name, unit, category_id, cat_area}]
+  etapa: 'upload',       // upload | processando | conferencia | resultado
+  areaDestino: 'limpeza',
+  arquivoBase64: null,
+  arquivoMediaType: null,
+  arquivoPreviewUrl: null,
+  nota: null,             // {numero, fornecedor_nome, fornecedor_cnpj, data_emissao}
+  avisos: [],
+  itensEditaveis: [],    // ver construirItensEditaveis()
+  salvando: false,
+  resultadoFinal: null   // {sucesso:[...], falhas:[...]}
+};
+
+/* ---------------------------------------------------------------------
+   INICIALIZAÇÃO
+--------------------------------------------------------------------- */
+async function iniciar(){
+  var sess = await sb.auth.getSession();
+  var session = sess && sess.data ? sess.data.session : null;
+  if(!session){ state.carregando=false; state.autenticado=false; render(); return; }
+  state.autenticado = true;
+
+  var perfilRes = await sb.from('profiles').select('name, role').eq('id', session.user.id).single();
+  if(perfilRes.error || !perfilRes.data){ state.carregando=false; render(); return; }
+  state.nomeAdmin = perfilRes.data.name;
+  state.admin = perfilRes.data.role === 'admin';
+
+  if(state.admin){
+    var catsRes = await sb.from('categories').select('*').order('nome');
+    var itemsRes = await sb.from('items').select('*');
+    state.categorias = (catsRes.data || []);
+    var catsById = {};
+    state.categorias.forEach(function(c){ catsById[c.id] = c; });
+    state.items = (itemsRes.data || []).map(function(it){
+      var cat = catsById[it.category_id];
+      return { id: it.id, name: it.name, unit: it.unit, category_id: it.category_id, cat_area: cat ? cat.area : 'cozinha' };
+    });
+  }
+  state.carregando = false;
+  render();
+}
+
+/* ---------------------------------------------------------------------
+   ETAPA 1 — ESCOLHER FOTO
+--------------------------------------------------------------------- */
+function downscaleImagem(file){
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    var reader = new FileReader();
+    reader.onerror = function(){ reject(new Error('Não foi possível ler o arquivo.')); };
+    reader.onload = function(){
+      img.onerror = function(){ reject(new Error('Arquivo não é uma imagem válida.')); };
+      img.onload = function(){
+        var MAX = 1600;
+        var w = img.width, h = img.height;
+        if(w > MAX || h > MAX){
+          var esc = Math.min(MAX/w, MAX/h);
+          w = Math.round(w*esc); h = Math.round(h*esc);
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ dataUrl: dataUrl, base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function onEscolherArquivo(file){
+  if(!file) return;
+  try{
+    var r = await downscaleImagem(file);
+    state.arquivoBase64 = r.base64;
+    state.arquivoMediaType = r.mediaType;
+    state.arquivoPreviewUrl = r.dataUrl;
+    render();
+  }catch(e){
+    toast('Não foi possível abrir essa foto. Tente outra.');
+  }
+}
+
+async function lerNota(){
+  if(!state.arquivoBase64) return;
+  state.etapa = 'processando';
+  render();
+  try{
+    var res = await sb.functions.invoke('ler-nf', { body: { imagem_base64: state.arquivoBase64, media_type: state.arquivoMediaType } });
+    if(res.error) throw new Error(res.error.message || 'Falha ao chamar a importação.');
+    var data = res.data;
+    if(!data || data.ok === false) throw new Error((data && data.erro) || 'Não foi possível ler essa nota.');
+
+    state.nota = data.nota || {};
+    state.avisos = data.avisos || [];
+    var cnpjLimpo = cnpjDigits(state.nota.fornecedor_cnpj);
+
+    var mapaFornecedor = {};
+    if(cnpjLimpo){
+      var mapRes = await sb.from('fornecedor_produtos').select('*').eq('fornecedor_cnpj', cnpjLimpo);
+      (mapRes.data || []).forEach(function(m){ mapaFornecedor[m.cod_prod_nf] = m; });
+    }
+
+    state.itensEditaveis = construirItensEditaveis(data.itens || [], mapaFornecedor);
+    state.etapa = 'conferencia';
+    render();
+  }catch(e){
+    toast(traduzErro(e.message));
+    state.etapa = 'upload';
+    render();
+  }
+}
+
+/* ---------------------------------------------------------------------
+   MONTA A LISTA EDITÁVEL — cruza o que a IA leu com o que já existe no
+   mapeamento (fornecedor_produtos). Quando já existe mapeamento, o item
+   é tratado como "existente" (já sabemos pra qual item do estoque vai e
+   qual a conversão de embalagem certa, aprendida da última vez). Quando
+   não existe, vira "novo" — a IA só dá uma SUGESTÃO, quem decide é o
+   administrador na tela de conferência.
+--------------------------------------------------------------------- */
+function construirItensEditaveis(itensIA, mapaFornecedor){
+  var catDestinoPadrao = state.categorias.filter(function(c){ return c.area === state.areaDestino; })[0];
+  return itensIA.map(function(it, idx){
+    var mapa = mapaFornecedor[it.cod_prod];
+    var itemExistente = mapa ? state.items.filter(function(x){ return x.id === mapa.item_id; })[0] : null;
+
+    var unidadesPorEmbalagem = mapa ? Number(mapa.unidades_por_embalagem) : Number(it.unidades_por_embalagem || 1);
+    var qtdNf = Number(it.quantidade_nf || 0);
+    var totalUnidades = mapa ? round2(qtdNf * unidadesPorEmbalagem) : round2(Number(it.quantidade_total_unidades != null ? it.quantidade_total_unidades : qtdNf * unidadesPorEmbalagem));
+
+    return {
+      _idx: idx,
+      cod_prod: it.cod_prod || '',
+      descricao_nf: it.descricao_nf || '',
+      unidade_nf: it.unidade_nf || '',
+      quantidade_nf: qtdNf,
+      status: (mapa && itemExistente) ? 'existente' : 'novo',
+      // Quando existe mapeamento:
+      item_id: (mapa && itemExistente) ? itemExistente.id : '',
+      item_nome: itemExistente ? itemExistente.name : '',
+      item_unit: itemExistente ? itemExistente.unit : '',
+      // Editáveis (usados tanto pra "novo" quanto pra vincular manualmente):
+      nome: itemExistente ? itemExistente.name : (it.nome_sugerido_app || it.descricao_nf || ''),
+      category_id: itemExistente ? itemExistente.category_id : (catDestinoPadrao ? catDestinoPadrao.id : ''),
+      unidade_app: itemExistente ? itemExistente.unit : (unidadesPorEmbalagem > 1 ? 'un' : (it.unidade_nf || 'un')),
+      minimo: 0,
+      quantidade_total: totalUnidades,
+      incluir: true
+    };
+  });
+}
+
+/* ---------------------------------------------------------------------
+   CONFIRMAR — grava tudo no banco, um item de cada vez.
+--------------------------------------------------------------------- */
+async function confirmarLancamento(){
+  state.salvando = true; render();
+  var cnpjLimpo = cnpjDigits(state.nota.fornecedor_cnpj);
+  var fornecedorNome = (state.nota.fornecedor_nome || '').trim();
+  var notaTexto = 'Importação de NF' + (state.nota.numero ? (' nº ' + state.nota.numero) : '');
+  var sucesso = [], falhas = [];
+
+  for(var i=0;i<state.itensEditaveis.length;i++){
+    var it = state.itensEditaveis[i];
+    if(!it.incluir) continue;
+    try{
+      var itemId = it.item_id;
+      var unidadeUsar = it.item_unit;
+
+      if(it.status === 'novo' && !itemId){
+        if(!it.nome.trim()) throw new Error('Informe o nome do item.');
+        if(!it.category_id) throw new Error('Escolha uma categoria.');
+        var criarRes = await sb.from('items').insert({
+          name: it.nome.trim(), category_id: it.category_id, unit: it.unidade_app,
+          qty: 0, min: Number(it.minimo) || 0, criado_por: state.nomeAdmin
+        }).select().single();
+        if(criarRes.error) throw criarRes.error;
+        itemId = criarRes.data.id;
+        unidadeUsar = it.unidade_app;
+        var catNome = (state.categorias.filter(function(c){ return c.id === it.category_id; })[0] || {}).nome || '';
+        await sb.from('audit_log').insert({ tipo:'produto', descricao: state.nomeAdmin + ' cadastrou o produto "' + it.nome.trim() + '" em ' + catNome + ' (importação de NF).', actor_id: (await sb.auth.getSession()).data.session.user.id });
+      }
+
+      if(Number(it.quantidade_total) > 0){
+        var movRes = await sb.rpc('registrar_movimento', {
+          p_item_id: itemId, p_tipo: 'entrada', p_qty: Number(it.quantidade_total), p_unidade: unidadeUsar,
+          p_fornecedor: fornecedorNome || 'Não informado', p_motivo: '', p_nota: notaTexto
+        });
+        if(movRes.error) throw movRes.error;
+      }
+
+      if(cnpjLimpo && it.cod_prod){
+        await sb.from('fornecedor_produtos').upsert({
+          fornecedor_cnpj: cnpjLimpo, fornecedor_nome: fornecedorNome || null, cod_prod_nf: it.cod_prod,
+          descricao_nf: it.descricao_nf, item_id: itemId, item_nome: it.nome.trim() || it.item_nome,
+          unidade_nf: it.unidade_nf, unidades_por_embalagem: (Number(it.quantidade_nf) > 0 ? round2(Number(it.quantidade_total) / Number(it.quantidade_nf)) : 1),
+          atualizado_por: state.nomeAdmin, atualizado_em: new Date().toISOString()
+        }, { onConflict: 'fornecedor_cnpj,cod_prod_nf' });
+      }
+
+      sucesso.push(it.nome || it.descricao_nf);
+    }catch(e){
+      falhas.push({ nome: it.nome || it.descricao_nf, motivo: traduzErro(e.message) });
+    }
+  }
+
+  state.salvando = false;
+  state.resultadoFinal = { sucesso: sucesso, falhas: falhas };
+  state.etapa = 'resultado';
+  render();
+}
+
+function reiniciar(){
+  state.etapa = 'upload';
+  state.arquivoBase64 = null; state.arquivoMediaType = null; state.arquivoPreviewUrl = null;
+  state.nota = null; state.avisos = []; state.itensEditaveis = []; state.resultadoFinal = null;
+  render();
+}
+
+/* ---------------------------------------------------------------------
+   RENDER
+--------------------------------------------------------------------- */
+function render(){
+  var c = document.getElementById('conteudo');
+  if(state.carregando){ c.innerHTML = '<div class="form">Carregando…</div>'; return; }
+  if(!state.autenticado){
+    c.innerHTML = '<div class="form"><div class="section-title">Entre no aplicativo primeiro</div><p class="muted-note">Abra o app principal, faça login, e depois volte para esta tela.</p><a class="btn btn-primary" style="text-align:center;text-decoration:none;display:block" href="index.html">Ir para o app</a></div>';
+    return;
+  }
+  if(!state.admin){
+    c.innerHTML = '<div class="form"><div class="section-title">Só administradores</div><p class="muted-note">Esta tela é só para quem tem papel de administrador no sistema.</p><a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="index.html">Voltar ao app</a></div>';
+    return;
+  }
+  if(state.etapa === 'upload'){ c.innerHTML = renderUpload(); bindUpload(); return; }
+  if(state.etapa === 'processando'){ c.innerHTML = '<div class="form" style="align-items:center"><div class="spinner"></div><div>Lendo a nota fiscal…</div><p class="muted-note" style="text-align:center">Isso pode levar alguns segundos.</p></div>'; return; }
+  if(state.etapa === 'conferencia'){ c.innerHTML = renderConferencia(); bindConferencia(); return; }
+  if(state.etapa === 'resultado'){ c.innerHTML = renderResultado(); return; }
+}
+
+function renderUpload(){
+  var opcoesArea = state.categorias.length ? ['cozinha','limpeza'].map(function(a){
+    return '<option value="' + a + '"' + (state.areaDestino===a?' selected':'') + '>' + (a==='limpeza'?'Limpeza':'Cozinha') + '</option>';
+  }).join('') : '';
+  return (
+    '<div class="form">' +
+      '<div class="section-title">1. Foto da nota fiscal</div>' +
+      '<p class="muted-note">Tire uma foto (ou escolha da galeria) da nota fiscal do fornecedor, com os itens legíveis.</p>' +
+      '<div class="field"><label>Área de destino (usada para sugerir a categoria de itens novos)</label><select id="sel-area-destino">' + opcoesArea + '</select></div>' +
+      (state.arquivoPreviewUrl
+        ? '<img class="thumb" src="' + state.arquivoPreviewUrl + '">' +
+          '<div class="grid2">' +
+            '<button class="btn btn-ghost" type="button" id="btn-trocar-foto">Trocar foto</button>' +
+            '<button class="btn btn-primary" type="button" id="btn-ler-nota">Ler nota fiscal</button>' +
+          '</div>'
+        : '<label class="upload-box" for="input-foto">' +
+            '<div class="label">Toque para escolher a foto</div>' +
+            '<div class="muted-note">Câmera ou galeria</div>' +
+          '</label>'
+      ) +
+      '<input id="input-foto" type="file" accept="image/*" capture="environment" style="display:none">' +
+    '</div>'
+  );
+}
+function bindUpload(){
+  var selArea = document.getElementById('sel-area-destino');
+  if(selArea) selArea.addEventListener('change', function(){ state.areaDestino = this.value; });
+  var input = document.getElementById('input-foto');
+  if(input) input.addEventListener('change', function(){ if(this.files && this.files[0]) onEscolherArquivo(this.files[0]); });
+  var btnTrocar = document.getElementById('btn-trocar-foto');
+  if(btnTrocar) btnTrocar.addEventListener('click', function(){ state.arquivoBase64=null; state.arquivoPreviewUrl=null; render(); });
+  var btnLer = document.getElementById('btn-ler-nota');
+  if(btnLer) btnLer.addEventListener('click', lerNota);
+}
+
+function renderConferencia(){
+  var nota = state.nota || {};
+  var avisosHtml = state.avisos.length ? '<div class="warn-box">' + state.avisos.map(escHtml).join('<br>') + '</div>' : '';
+  var cnpjAviso = !cnpjDigits(nota.fornecedor_cnpj) ? '<div class="warn-box">CNPJ do fornecedor não identificado — os itens serão lançados normalmente, mas o sistema não vai "lembrar" desse fornecedor na próxima nota (confira/preencha o CNPJ abaixo, se souber).</div>' : '';
+
+  var itensHtml = state.itensEditaveis.map(renderItemRow).join('');
+  var totalIncluidos = state.itensEditaveis.filter(function(it){ return it.incluir; }).length;
+
+  return (
+    '<div class="form">' +
+      '<div class="section-title">2. Dados da nota</div>' +
+      '<div class="grid2">' +
+        '<div class="field"><label>Fornecedor</label><input type="text" id="campo-fornecedor-nome" value="' + escHtml(nota.fornecedor_nome||'') + '"></div>' +
+        '<div class="field"><label>CNPJ</label><input type="text" id="campo-fornecedor-cnpj" value="' + escHtml(nota.fornecedor_cnpj||'') + '"></div>' +
+      '</div>' +
+      '<div class="grid2">' +
+        '<div class="field"><label>Número da nota</label><input type="text" id="campo-numero" value="' + escHtml(nota.numero||'') + '"></div>' +
+        '<div class="field"><label>Data de emissão</label><input type="text" id="campo-data" value="' + escHtml(nota.data_emissao||'') + '"></div>' +
+      '</div>' +
+      cnpjAviso + avisosHtml +
+    '</div>' +
+    '<div class="section-title">3. Itens (' + state.itensEditaveis.length + ')</div>' +
+    itensHtml +
+    '<div class="rodape-fixo">' +
+      '<div class="muted-note">' + totalIncluidos + ' de ' + state.itensEditaveis.length + ' item(ns) serão lançados.</div>' +
+      '<button class="btn btn-primary" id="btn-confirmar-lancamento" type="button"' + (state.salvando||!totalIncluidos?' disabled':'') + '>' + (state.salvando ? 'Lançando…' : ('Confirmar e lançar ' + totalIncluidos + ' item(ns)')) + '</button>' +
+      '<button class="btn btn-ghost btn-sm" id="btn-cancelar-conferencia" type="button"' + (state.salvando?' disabled':'') + '>Cancelar e tirar outra foto</button>' +
+    '</div>'
+  );
+}
+
+function renderItemRow(it){
+  var areaAtual = state.areaDestino;
+  var catOptsNovo = state.categorias.map(function(c){
+    return '<option value="' + c.id + '"' + (c.id===it.category_id?' selected':'') + '>' + escHtml(c.nome) + (c.area!==areaAtual?(' (' + (c.area==='limpeza'?'Limpeza':'Cozinha') + ')'):'') + '</option>';
+  }).join('');
+  var unidadeOpts = UNITS.map(function(u){ return '<option value="' + u + '"' + (u===it.unidade_app?' selected':'') + '>' + u + '</option>'; }).join('');
+  var vincularOpts = '<option value="">— criar item novo —</option>' + state.items.map(function(x){
+    return '<option value="' + x.id + '"' + (x.id===it.item_id?' selected':'') + '>' + escHtml(x.name) + '</option>';
+  }).join('');
+
+  var corpo;
+  if(it.status === 'existente'){
+    corpo =
+      '<div class="muted-note">Item do estoque: <b>' + escHtml(it.item_nome) + '</b> · unidade: ' + escHtml(it.item_unit) + '</div>' +
+      '<div class="field"><label>Quantidade total a lançar (entrada)</label><input type="number" min="0" step="0.01" data-campo="quantidade_total" data-idx="' + it._idx + '" value="' + it.quantidade_total + '"></div>';
+  } else {
+    corpo =
+      '<div class="field"><label>Já existe no estoque? (opcional)</label><select data-campo="vincular" data-idx="' + it._idx + '">' + vincularOpts + '</select></div>' +
+      '<div class="field"><label>Nome do produto</label><input type="text" data-campo="nome" data-idx="' + it._idx + '" value="' + escHtml(it.nome) + '"></div>' +
+      '<div class="grid2">' +
+        '<div class="field"><label>Categoria</label><select data-campo="category_id" data-idx="' + it._idx + '">' + catOptsNovo + '</select></div>' +
+        '<div class="field"><label>Unidade</label><select data-campo="unidade_app" data-idx="' + it._idx + '">' + unidadeOpts + '</select></div>' +
+      '</div>' +
+      '<div class="grid2">' +
+        '<div class="field"><label>Quantidade total (entrada)</label><input type="number" min="0" step="0.01" data-campo="quantidade_total" data-idx="' + it._idx + '" value="' + it.quantidade_total + '"></div>' +
+        '<div class="field"><label>Estoque mínimo</label><input type="number" min="0" step="0.01" data-campo="minimo" data-idx="' + it._idx + '" value="' + it.minimo + '"></div>' +
+      '</div>';
+  }
+
+  return (
+    '<div class="nf-item-row">' +
+      '<div class="nf-item-head">' +
+        '<div><div class="nf-item-nome">' + escHtml(it.nome || it.descricao_nf) + '</div><div class="nf-item-cod">Cód. NF: ' + escHtml(it.cod_prod || '—') + ' · ' + escHtml(it.descricao_nf) + '</div></div>' +
+        '<span class="badge ' + (it.status==='existente'?'badge-existente':'badge-novo') + '">' + (it.status==='existente'?'Já cadastrado':'Novo') + '</span>' +
+      '</div>' +
+      corpo +
+      '<label class="muted-note" style="display:flex;align-items:center;gap:6px"><input type="checkbox" data-campo="incluir" data-idx="' + it._idx + '"' + (it.incluir?' checked':'') + '> Incluir este item no lançamento</label>' +
+    '</div>'
+  );
+}
+
+function bindConferencia(){
+  var f = document.getElementById('campo-fornecedor-nome'); if(f) f.addEventListener('input', function(){ state.nota.fornecedor_nome = this.value; });
+  var c = document.getElementById('campo-fornecedor-cnpj'); if(c) c.addEventListener('input', function(){ state.nota.fornecedor_cnpj = this.value; });
+  var n = document.getElementById('campo-numero'); if(n) n.addEventListener('input', function(){ state.nota.numero = this.value; });
+  var d = document.getElementById('campo-data'); if(d) d.addEventListener('input', function(){ state.nota.data_emissao = this.value; });
+
+  document.querySelectorAll('[data-campo]').forEach(function(el){
+    var evento = (el.tagName==='SELECT' || el.type==='checkbox') ? 'change' : 'input';
+    el.addEventListener(evento, function(){
+      var idx = parseInt(this.getAttribute('data-idx'), 10);
+      var campo = this.getAttribute('data-campo');
+      var it = state.itensEditaveis[idx];
+      if(!it) return;
+      if(campo === 'incluir'){ it.incluir = this.checked; return; }
+      if(campo === 'vincular'){
+        var idSelecionado = this.value;
+        var itemSel = state.items.filter(function(x){ return x.id === idSelecionado; })[0];
+        if(idSelecionado && itemSel){
+          it.status = 'existente'; it.item_id = itemSel.id; it.item_nome = itemSel.name; it.item_unit = itemSel.unit;
+        } else {
+          it.status = 'novo'; it.item_id = ''; it.item_nome = ''; it.item_unit = '';
+        }
+        render();
+        return;
+      }
+      if(campo === 'quantidade_total' || campo === 'minimo'){ it[campo] = this.value; return; }
+      it[campo] = this.value;
+    });
+  });
+
+  var btnConfirmar = document.getElementById('btn-confirmar-lancamento');
+  if(btnConfirmar) btnConfirmar.addEventListener('click', confirmarLancamento);
+  var btnCancelar = document.getElementById('btn-cancelar-conferencia');
+  if(btnCancelar) btnCancelar.addEventListener('click', reiniciar);
+}
+
+function renderResultado(){
+  var r = state.resultadoFinal || { sucesso:[], falhas:[] };
+  var okHtml = r.sucesso.length ? ('<div class="info-box">Lançado(s) com sucesso: ' + r.sucesso.map(escHtml).join(', ') + '</div>') : '';
+  var falhasHtml = r.falhas.length ? ('<div class="crit-box">Não foi possível lançar: ' + r.falhas.map(function(f){ return escHtml(f.nome) + ' (' + escHtml(f.motivo) + ')'; }).join('; ') + '</div>') : '';
+  return (
+    '<div class="form">' +
+      '<div class="section-title">Importação concluída</div>' +
+      okHtml + falhasHtml +
+      '<a class="btn btn-primary" style="text-align:center;text-decoration:none;display:block" href="index.html">Ver estoque atualizado</a>' +
+      '<button class="btn btn-ghost" type="button" id="btn-nova-importacao">Importar outra nota</button>' +
+    '</div>'
+  );
+}
+document.addEventListener('click', function(e){
+  if(e.target && e.target.id === 'btn-nova-importacao') reiniciar();
+});
+
+// window.__DESPENSA_SKIP_AUTOMOUNT__ existe só nos testes automatizados,
+// pra dar tempo do teste "logar" no cliente falso antes da tela carregar
+// (do mesmo jeito que já funciona no index.html).
+window.__iniciarConferenciaNF__ = iniciar;
+if(!window.__DESPENSA_SKIP_AUTOMOUNT__){ iniciar(); }
+</script>
+</body>
+</html>

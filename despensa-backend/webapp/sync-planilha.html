@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sincronizar Mapa de Merenda — Despensa Digital</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F6F5C">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F6F5; --surface:#FFFFFF; --surface-2:#EDF1EF; --ink:#1F2A28; --muted:#5B6B67;
+    --line:#DCE3E1; --accent:#1F6F5C; --accent-ink:#0F3E33; --accent-soft:#E4F0EC;
+    --warn:#A8660F; --warn-soft:#FBEDD8; --crit:#B3392C; --crit-soft:#FBE4E1;
+    --shadow: 0 1px 2px rgba(20,30,28,0.06), 0 4px 14px rgba(20,30,28,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#121716; --surface:#1B2422; --surface-2:#212B29; --ink:#E9EEEC; --muted:#9BAAA6;
+      --line:#2B3634; --accent:#4FBF9E; --accent-ink:#DFF6EE; --accent-soft:#1E3530;
+      --warn:#E0A542; --warn-soft:#3A2C15; --crit:#E2695C; --crit-soft:#3A211D;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.35);
+    }
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Public Sans', system-ui, -apple-system, sans-serif; -webkit-font-smoothing:antialiased; }
+  #root{ max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding:0 0 40px; }
+  .brand-name{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:700; font-size:20px; line-height:1; color:var(--accent-ink); }
+  .section-title{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:17px; color:var(--ink); }
+  .topbar{ display:flex; align-items:center; gap:10px; padding:16px; border-bottom:1px solid var(--line); background:var(--surface); position:sticky; top:0; z-index:5; }
+  .voltar-link{ color:var(--accent); text-decoration:none; font-weight:700; font-size:14px; white-space:nowrap; }
+  #conteudo{ padding:16px; display:flex; flex-direction:column; gap:16px; }
+  .form{ display:flex; flex-direction:column; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+  .btn{ border:none; border-radius:12px; padding:13px 16px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:disabled{ opacity:0.5; cursor:default; }
+  .btn-ghost{ background:var(--surface-2); color:var(--ink); }
+  .card-arquivo{ display:flex; align-items:center; gap:12px; background:var(--accent-soft); border-radius:12px; padding:12px 14px; }
+  .card-arquivo .nome{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:16px; color:var(--accent-ink); }
+  .card-arquivo .caminho{ font-size:12px; color:var(--accent-ink); opacity:0.8; word-break:break-word; }
+  .warn-box{ background:var(--warn-soft); color:var(--warn); border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; }
+  .crit-box{ background:var(--crit-soft); color:var(--crit); border-radius:10px; padding:14px; font-size:14px; }
+  .info-box{ background:var(--accent-soft); color:var(--accent-ink); border-radius:10px; padding:10px 12px; font-size:13px; }
+  .item-pendente{ display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--line); background:var(--surface); border-radius:12px; padding:12px 14px; }
+  .item-pendente .nome{ font-family:'Barlow Condensed', system-ui, sans-serif; font-weight:600; font-size:16px; }
+  .item-pendente .genero{ font-size:12px; color:var(--muted); }
+  .pill{ font-size:12px; font-weight:700; border-radius:8px; padding:4px 9px; white-space:nowrap; }
+  .pill-entrada{ background:var(--accent-soft); color:var(--accent-ink); }
+  .pill-saida{ background:var(--warn-soft); color:var(--warn); }
+  .muted-note{ font-size:12px; color:var(--muted); }
+  .spinner{ width:22px; height:22px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--accent); animation:spin 0.8s linear infinite; margin:0 auto; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:10px; font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:all .2s; z-index:50; max-width:90%; text-align:center; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="topbar">
+    <a class="voltar-link" href="index.html">&larr; Voltar</a>
+    <span class="brand-name">Sincronizar com a Planilha</span>
+  </div>
+  <div id="conteudo"></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var SUPABASE_URL = "https://jqmnboteogreoomayxpo.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxbW5ib3Rlb2dyZW9vbWF5eHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDM1MTUsImV4cCI6MjEwMzAxOTUxNX0.FbpvWGxMXmaJxhz2NDOv4hDmA5ttmrLYfZTUFEEVv_c";
+var sb = (window.__DESPENSA_TEST_CLIENT__) ? window.__DESPENSA_TEST_CLIENT__ : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+var NOMES_MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtQty(n){ var v = Math.round((parseFloat(n)||0)*100)/100; return v.toLocaleString('pt-BR', {maximumFractionDigits:2}); }
+function fmtDateTime(iso){ if(!iso) return ''; var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
+var toastTimer = null;
+function toast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+}
+function traduzErro(msg){
+  if(!msg) return 'Não foi possível concluir agora. Tente de novo.';
+  if(/row-level security policy/i.test(msg)) return 'Você não tem permissão para fazer isso.';
+  if(/failed to fetch|networkerror|load failed/i.test(msg)) return 'Sem conexão com a internet agora.';
+  if(/jwt expired|invalid jwt|invalid refresh token/i.test(msg)) return 'Sua sessão expirou. Volte ao app e entre de novo.';
+  return msg;
+}
+
+var state = {
+  carregando: true,
+  autenticado: false,
+  admin: false,
+  nomeAdmin: '',
+  etapa: 'normal',       // normal | alerta
+  pendentesMapeados: [],   // [{item_id, item_nome, genero_planilha, entrada_total, saida_total, mov_ids:[...]}]
+  pendentesSemMapa: [],    // [{item_id, item_nome, entrada_total, saida_total}]
+  ultimaSyncEm: null,
+  sincronizando: false,
+  alertaInfo: null,       // { procurou, erro }
+};
+
+async function iniciar(){
+  var sess = await sb.auth.getSession();
+  var session = sess && sess.data ? sess.data.session : null;
+  if(!session){ state.carregando=false; state.autenticado=false; render(); return; }
+  state.autenticado = true;
+
+  var perfilRes = await sb.from('profiles').select('name, role').eq('id', session.user.id).single();
+  if(perfilRes.error || !perfilRes.data){ state.carregando=false; render(); return; }
+  state.nomeAdmin = perfilRes.data.name;
+  state.admin = perfilRes.data.role === 'admin';
+
+  if(state.admin){ await recarregarPendencias(); }
+  state.carregando = false;
+  render();
+}
+
+async function recarregarPendencias(){
+  var itemsRes = await sb.from('items').select('*');
+  var catsRes = await sb.from('categories').select('*');
+  var movsRes = await sb.from('movements').select('*');
+  var mapaRes = await sb.from('planilha_merenda_mapa').select('*');
+
+  var catsById = {}; (catsRes.data||[]).forEach(function(c){ catsById[c.id] = c; });
+  var itensCozinha = {}; (itemsRes.data||[]).forEach(function(it){
+    var cat = catsById[it.category_id];
+    if(cat && cat.area === 'cozinha') itensCozinha[it.id] = it;
+  });
+  var mapaPorItem = {}; (mapaRes.data||[]).forEach(function(m){ mapaPorItem[m.item_id] = m; });
+
+  var grupos = {}; // item_id -> {entrada_total, saida_total, mov_ids}
+  var maiorSync = null;
+  (movsRes.data||[]).forEach(function(m){
+    if(m.sincronizado_planilha_em){
+      if(!maiorSync || m.sincronizado_planilha_em > maiorSync) maiorSync = m.sincronizado_planilha_em;
+    }
+    if(m.estornado) return;
+    if(m.sincronizado_planilha_em) return;
+    if(!itensCozinha[m.item_id]) return;
+    var g = grupos[m.item_id] || { entrada_total:0, saida_total:0, mov_ids:[] };
+    if(m.type === 'entrada') g.entrada_total += Number(m.qty)||0;
+    else g.saida_total += Number(m.qty)||0;
+    g.mov_ids.push(m.id);
+    grupos[m.item_id] = g;
+  });
+
+  state.pendentesMapeados = [];
+  state.pendentesSemMapa = [];
+  Object.keys(grupos).forEach(function(itemId){
+    var item = itensCozinha[itemId];
+    var g = grupos[itemId];
+    var mapa = mapaPorItem[itemId];
+    if(mapa){
+      state.pendentesMapeados.push({ item_id:itemId, item_nome:item.name, genero_planilha:mapa.genero_planilha, entrada_total:g.entrada_total, saida_total:g.saida_total, mov_ids:g.mov_ids });
+    } else {
+      state.pendentesSemMapa.push({ item_id:itemId, item_nome:item.name, entrada_total:g.entrada_total, saida_total:g.saida_total });
+    }
+  });
+  state.ultimaSyncEm = maiorSync;
+}
+
+async function sincronizarAgora(){
+  if(!state.pendentesMapeados.length){ toast('Não há movimentações pendentes pra sincronizar.'); return; }
+  state.sincronizando = true; render();
+  try{
+    var payload = state.pendentesMapeados.map(function(p){ return { genero_planilha:p.genero_planilha, entrada_total:p.entrada_total, saida_total:p.saida_total }; });
+    var res = await sb.functions.invoke('sync-planilha', { body: { itens: payload } });
+    if(res.error) throw new Error(res.error.message || 'Falha ao chamar a sincronização.');
+    var data = res.data;
+    if(data && data.naoEncontrado){
+      state.alertaInfo = { procurou: data.procurou, erro: data.erro };
+      state.etapa = 'alerta';
+      state.sincronizando = false;
+      render();
+      return;
+    }
+    if(!data || data.ok === false) throw new Error((data && data.erro) || 'Não foi possível sincronizar agora.');
+
+    var todosIds = [];
+    state.pendentesMapeados.forEach(function(p){ todosIds = todosIds.concat(p.mov_ids); });
+    var marcarRes = await sb.rpc('marcar_movimentos_sincronizados', { p_ids: todosIds });
+    if(marcarRes.error) throw marcarRes.error;
+
+    state.etapa = 'normal';
+    state.alertaInfo = null;
+    await recarregarPendencias();
+    state.sincronizando = false;
+    var avisoSemCorrespondencia = (data.semCorrespondencia && data.semCorrespondencia.length)
+      ? (' Atenção: ' + data.semCorrespondencia.length + ' item(ns) não encontraram a linha na planilha deste mês.') : '';
+    toast('Sincronizado com sucesso!' + avisoSemCorrespondencia);
+    render();
+  }catch(e){
+    state.sincronizando = false;
+    toast(traduzErro(e.message));
+    render();
+  }
+}
+async function verificarNovamente(){
+  await sincronizarAgora();
+}
+
+/* ---------------------------------------------------------------------
+   RENDER
+--------------------------------------------------------------------- */
+function render(){
+  var c = document.getElementById('conteudo');
+  if(state.carregando){ c.innerHTML = '<div class="form">Carregando…</div>'; return; }
+  if(!state.autenticado){
+    c.innerHTML = '<div class="form"><div class="section-title">Entre no aplicativo primeiro</div><p class="muted-note">Abra o app principal, faça login, e depois volte para esta tela.</p><a class="btn btn-primary" style="text-align:center;text-decoration:none;display:block" href="index.html">Ir para o app</a></div>';
+    return;
+  }
+  if(!state.admin){
+    c.innerHTML = '<div class="form"><div class="section-title">Só administradores</div><p class="muted-note">Esta tela é só para quem tem papel de administrador no sistema.</p><a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="index.html">Voltar ao app</a></div>';
+    return;
+  }
+  if(state.etapa === 'alerta'){ c.innerHTML = renderAlerta(); bindAlerta(); return; }
+  c.innerHTML = renderNormal(); bindNormal();
+}
+
+function renderNormal(){
+  var totalPendentes = state.pendentesMapeados.length;
+  var itensHtml = state.pendentesMapeados.map(function(p){
+    return (
+      '<div class="item-pendente">' +
+        '<div><div class="nome">' + escHtml(p.item_nome) + '</div><div class="genero">Linha na planilha: "' + escHtml(p.genero_planilha) + '"</div></div>' +
+        '<div style="display:flex;gap:6px">' +
+          (p.entrada_total > 0 ? '<span class="pill pill-entrada">+' + fmtQty(p.entrada_total) + '</span>' : '') +
+          (p.saida_total > 0 ? '<span class="pill pill-saida">-' + fmtQty(p.saida_total) + '</span>' : '') +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+  var semMapaHtml = state.pendentesSemMapa.length ? (
+    '<div class="warn-box">' + state.pendentesSemMapa.length + ' item(ns) de Cozinha com movimentação pendente mas SEM linha da planilha definida ainda, então não entram nesta sincronização: ' +
+    state.pendentesSemMapa.map(function(p){ return escHtml(p.item_nome); }).join(', ') +
+    '. Defina a linha correspondente em Cadastro &gt; Produtos &gt; abra o item &gt; "Linha no Mapa de Merenda".</div>'
+  ) : '';
+
+  return (
+    '<div class="form">' +
+      '<div class="section-title">Movimentações pendentes (Cozinha)</div>' +
+      (totalPendentes ? itensHtml : '<p class="muted-note">Nenhuma movimentação de Cozinha pendente de sincronizar no momento.</p>') +
+      semMapaHtml +
+      '<p class="muted-note">Última sincronização: ' + (state.ultimaSyncEm ? fmtDateTime(state.ultimaSyncEm) : 'nunca') + '</p>' +
+      '<button class="btn btn-primary" id="btn-sincronizar" type="button"' + (state.sincronizando || !totalPendentes ? ' disabled' : '') + '>' + (state.sincronizando ? 'Sincronizando…' : 'Sincronizar agora') + '</button>' +
+    '</div>'
+  );
+}
+function bindNormal(){
+  var btn = document.getElementById('btn-sincronizar');
+  if(btn) btn.addEventListener('click', sincronizarAgora);
+}
+
+function renderAlerta(){
+  var p = (state.alertaInfo && state.alertaInfo.procurou) || {};
+  return (
+    '<div class="form">' +
+      '<div class="crit-box">' +
+        '<div class="section-title" style="color:inherit;margin-bottom:6px">Planilha do mês ainda não encontrada</div>' +
+        '<p>' + escHtml((state.alertaInfo && state.alertaInfo.erro) || 'Não encontrei a planilha deste mês.') + '</p>' +
+        '<p class="muted-note" style="color:inherit;opacity:0.85">Procurei em: ' + escHtml(p.pastaRaiz||'') + ' &rsaquo; ' + escHtml(p.pastaAno||'') + ' &rsaquo; ' + escHtml(p.pastaMes||'') + ' &rsaquo; ' + escHtml(p.arquivo||'') + '</p>' +
+      '</div>' +
+      '<div class="info-box">Nada foi perdido — as movimentações continuam guardadas aqui, esperando a planilha aparecer. Assim que ela for criada (copiando a do mês anterior, como sempre), é só verificar de novo.</div>' +
+      '<button class="btn btn-primary" id="btn-verificar-novamente" type="button"' + (state.sincronizando?' disabled':'') + '>' + (state.sincronizando ? 'Verificando…' : 'Verificar novamente') + '</button>' +
+      '<button class="btn btn-ghost" id="btn-voltar-normal" type="button">Voltar</button>' +
+    '</div>'
+  );
+}
+function bindAlerta(){
+  var btn = document.getElementById('btn-verificar-novamente');
+  if(btn) btn.addEventListener('click', verificarNovamente);
+  var voltar = document.getElementById('btn-voltar-normal');
+  if(voltar) voltar.addEventListener('click', function(){ state.etapa='normal'; state.alertaInfo=null; render(); });
+}
+
+window.__iniciarSyncPlanilha__ = iniciar;
+if(!window.__DESPENSA_SKIP_AUTOMOUNT__){ iniciar(); }
+</script>
+</body>
+</html>
