@@ -46,6 +46,7 @@ var ICONS = {
   down: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 4-4m-4 4-4-4M4 19.5h16"/></svg>',
   up: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9m0 0 4 4m-4-4-4 4M4 4.5h16"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  report: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l3 3V20a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M14 3.5V7h3.5M9 11h6M9 15h6M9 18h3"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.3"/><path d="M4.5 20c1.4-4 4-6 7.5-6s6.1 2 7.5 6"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.6"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.9-1.4-2-3.4-2.2.8a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.2-.8-2 3.4L4.6 10.5a7.6 7.6 0 0 0 0 3L2.7 14.9l2 3.4 2.2-.8a7.6 7.6 0 0 0 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.2.8 2-3.4z"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round"><path d="M5 5l14 14M19 5 5 19"/></svg>'
@@ -189,7 +190,8 @@ var auth = { session:null, profile:null, screen:'entrar', loading:true, error:''
 var vindoDeRecuperacaoSenha = /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
 var state = { schoolName:'Cozinha da escola', items:[], movements:[], categorias:[], unidades:[], profiles:[], auditLog:[], planilhaMapa:[], arquivoMeses:12, ultimaExportacaoEm:null };
 var ui = { tab:'estoque', search:'', userSearch:'', categoryFilter:'todas', grupoFilter:'todos', showLowOnly:false, modal:null, cadastroSub:'produtos',
-  formItemId:'', formQty:1, formUnidade:'', formFornecedor:'', formMotivo:REASONS_SAIDA[0], formNota:'', histSearch:'', saving:false };
+  formItemId:'', formQty:1, formUnidade:'', formFornecedor:'', formMotivo:REASONS_SAIDA[0], formNota:'', histSearch:'',
+  relArea:'todos', relMes:(new Date().getMonth()+1), relAno:(new Date().getFullYear()), saving:false };
 var toastTimer = null;
 
 function toast(msg){
@@ -415,10 +417,85 @@ function renderHistorico(state, ui){
   '<button class="btn btn-ghost" type="button" data-action="gerar-contagem">Gerar lista de contagem</button>' +
   '<button class="btn btn-ghost" type="button" data-action="exportar-planilha">&#8681; Exportar planilha (Excel)</button>';
 }
+function areasPermitidasRelatorio(){
+  var p = auth.profile;
+  if(p && p.role === 'padrao' && p.area !== 'ambas') return [p.area];
+  return ['cozinha','limpeza'];
+}
+function areaDoItemRelatorio(state, item){
+  if(!item || !item.cat) return '';
+  var cats = categoriasEstado(state);
+  for(var i=0;i<cats.length;i++){ if(nomeCategoria(cats[i])===item.cat) return cats[i].area || 'cozinha'; }
+  return '';
+}
+function areaDaMovimentacaoRelatorio(state, mov){
+  return areaDoItemRelatorio(state, findItem(mov.itemId));
+}
+function anosRelatorio(state){
+  var atual = new Date().getFullYear();
+  var anos = {};
+  anos[atual] = true;
+  var areas = areasPermitidasRelatorio();
+  state.movements.forEach(function(m){
+    var area = areaDaMovimentacaoRelatorio(state, m);
+    if(areas.indexOf(area)===-1) return;
+    var d = new Date(m.at);
+    if(!isNaN(d.getTime())) anos[d.getFullYear()] = true;
+  });
+  return Object.keys(anos).map(function(a){ return parseInt(a, 10); }).sort(function(a,b){ return a-b; });
+}
+function renderRelatorios(state, ui){
+  var areas = areasPermitidasRelatorio();
+  var podeTodas = areas.length > 1;
+  var areaSel = (podeTodas && ui.relArea==='todos') ? 'todos' : (areas.indexOf(ui.relArea)!==-1 ? ui.relArea : areas[0]);
+  var mesSel = parseInt(ui.relMes, 10) || (new Date().getMonth()+1);
+  var anoSel = parseInt(ui.relAno, 10) || new Date().getFullYear();
+  var anos = anosRelatorio(state);
+  if(anos.indexOf(anoSel)===-1) anos.push(anoSel);
+  anos.sort(function(a,b){ return a-b; });
+  var areaOptions = (podeTodas ? '<option value="todos"' + (areaSel==='todos'?' selected':'') + '>Todas</option>' : '') +
+    areas.map(function(a){ return '<option value="' + a + '"' + (areaSel===a?' selected':'') + '>' + areaLabel(a) + '</option>'; }).join('');
+  var mesOptions = NOMES_MES.map(function(nome, idx){ var v = idx+1; return '<option value="' + v + '"' + (mesSel===v?' selected':'') + '>' + (nome.charAt(0).toUpperCase() + nome.slice(1)) + '</option>'; }).join('');
+  var anoOptions = anos.map(function(ano){ return '<option value="' + ano + '"' + (anoSel===ano?' selected':'') + '>' + ano + '</option>'; }).join('');
+  var filtradas = state.movements.slice().filter(function(m){
+    var d = new Date(m.at);
+    if(isNaN(d.getTime()) || d.getMonth()+1 !== mesSel || d.getFullYear() !== anoSel) return false;
+    var area = areaDaMovimentacaoRelatorio(state, m);
+    if(areas.indexOf(area)===-1) return false;
+    return areaSel==='todos' || area===areaSel;
+  }).sort(function(a,b){ return new Date(b.at) - new Date(a.at); });
+  var entradas = filtradas.filter(function(m){ return m.type==='entrada'; }).length;
+  var saidas = filtradas.filter(function(m){ return m.type==='saida'; }).length;
+  var produtos = {};
+  filtradas.forEach(function(m){ var it = findItem(m.itemId); if(it) produtos[it.name] = true; });
+  var byDay = {}, order = [];
+  filtradas.forEach(function(m){ var k = dayKey(m.at); if(!byDay[k]){ byDay[k] = { label: fmtWeekdayDate(m.at), rows: [] }; order.push(k); } byDay[k].rows.push(m); });
+  var grupos = order.map(function(k){ var g = byDay[k]; return '<div class="day-group"><div class="day-header">' + escHtml(g.label) + '</div><div class="hist-list">' + g.rows.map(function(m){ return renderHistRow(m, state, false); }).join('') + '</div></div>'; }).join('');
+  var titulo = NOMES_MES[mesSel-1].toUpperCase() + ' DE ' + anoSel + ' · ' + (areaSel==='todos' ? 'TODAS AS ÁREAS' : areaLabel(areaSel).toUpperCase());
+  return '' +
+  '<div class="section-title">Relatórios de movimentações</div>' +
+  '<div class="field-hint">Consulte entradas e saídas por área e período.</div>' +
+  '<div class="report-filters">' +
+    '<div class="field"><label>Área</label><select data-field="rel-area">' + areaOptions + '</select></div>' +
+    '<div class="field"><label>Mês</label><select data-field="rel-mes">' + mesOptions + '</select></div>' +
+    '<div class="field"><label>Ano</label><select data-field="rel-ano">' + anoOptions + '</select></div>' +
+  '</div>' +
+  '<div class="report-summary">' +
+    '<div class="label">' + escHtml(titulo) + '</div>' +
+    '<div class="report-count">' + filtradas.length + ' movimentaç' + (filtradas.length===1?'ão encontrada':'ões encontradas') + '</div>' +
+    '<div class="report-metrics">' +
+      '<div class="picked-item"><span>Total</span><b>' + filtradas.length + '</b></div>' +
+      '<div class="picked-item"><span>Entradas</span><b>' + entradas + '</b></div>' +
+      '<div class="picked-item"><span>Saídas</span><b>' + saidas + '</b></div>' +
+      '<div class="picked-item"><span>Produtos envolvidos</span><b>' + Object.keys(produtos).length + '</b></div>' +
+    '</div>' +
+  '</div>' +
+  (grupos || '<div class="empty-note">Não há movimentações para os filtros selecionados.</div>');
+}
 function renderTabBar(state, ui){
   function tab(id, icon, label){ return '<button class="tab" type="button" data-action="set-tab" data-tab="' + id + '" aria-current="' + (ui.tab===id?'true':'false') + '">' + icon + '<span>' + label + '</span></button>'; }
   return '<div class="tabbar"><div class="tabbar-inner">' +
-    tab('estoque', ICONS.box, 'Estoque') + tab('entrada', ICONS.down, 'Entrada') + tab('saida', ICONS.up, 'Saída') + tab('historico', ICONS.clock, 'Histórico') +
+    tab('estoque', ICONS.box, 'Estoque') + tab('entrada', ICONS.down, 'Entrada') + tab('saida', ICONS.up, 'Saída') + tab('historico', ICONS.clock, 'Histórico') + tab('relatorios', ICONS.report, 'Relatórios') +
     (isAdmin() ? tab('cadastro', ICONS.gear, 'Cadastro') : '') +
   '</div></div>';
 }
@@ -679,6 +756,7 @@ function renderRoot(state, ui){
   else if(tab==='entrada') panel = renderMovForm(state, ui, 'entrada');
   else if(tab==='saida') panel = renderMovForm(state, ui, 'saida');
   else if(tab==='cadastro') panel = renderCadastro(state, ui);
+  else if(tab==='relatorios') panel = renderRelatorios(state, ui);
   else panel = renderHistorico(state, ui);
   return renderTopBar(state, ui) + renderAlertaEstoque(state, ui) + renderAlertaArquivo(state, ui) + renderPendingBanner(ui) +
     '<div class="content">' + panel + '</div>' + renderTabBar(state, ui) + renderModal(state, ui);
@@ -761,7 +839,7 @@ function refocusPos(sel, pos){ requestAnimationFrame(function(){ var el = docume
 var paintBuscaDebounced = debounce(function(sel, pos){ paint(); refocusPos(sel, pos); }, 150);
 
 function switchTab(tab){
-  if(['estoque','entrada','saida','historico','cadastro'].indexOf(tab)===-1) tab = 'estoque';
+  if(['estoque','entrada','saida','historico','relatorios','cadastro'].indexOf(tab)===-1) tab = 'estoque';
   ui.tab = tab;
   paint();
 }
@@ -777,6 +855,24 @@ function mapItem(row, catsById){
 function mapMovement(row){
   return { id: row.id, itemId: row.item_id, type: row.type, qty: Number(row.qty), unidade: row.unidade, who: row.who_name, whoId: row.who_id, fornecedor: row.fornecedor, motivo: row.motivo, nota: row.nota, at: row.at, estornado: row.estornado, estornadoPor: row.estornado_por_nome, estornadoEm: row.estornado_em };
 }
+function normalizarCategoriasDuplicadas(state){
+  var alvo = null, duplicada = null;
+  state.categorias.forEach(function(c){
+    if(c.nome === 'Descartáveis') alvo = c;
+    if(c.nome === 'Descartável') duplicada = c;
+  });
+  if(!alvo || !duplicada) return 0;
+  var afetados = 0;
+  state.items.forEach(function(it){
+    if(it.category_id === duplicada.id || it.cat === duplicada.nome){
+      it.category_id = alvo.id;
+      it.cat = alvo.nome;
+      afetados++;
+    }
+  });
+  state.categorias = state.categorias.filter(function(c){ return c.id !== duplicada.id; });
+  return afetados;
+}
 async function carregarTudo(){
   var catsRes = await sb.from('categories').select('*').order('nome');
   if(catsRes.error) throw catsRes.error;
@@ -791,6 +887,7 @@ async function carregarTudo(){
   var itemsRes = await sb.from('items').select('*');
   if(itemsRes.error) throw itemsRes.error;
   state.items = itemsRes.data.map(function(row){ return mapItem(row, catsById); });
+  normalizarCategoriasDuplicadas(state);
 
   var movsRes = await sb.from('movements').select('*').order('at', {ascending:false}).limit(2000);
   if(movsRes.error) throw movsRes.error;
@@ -1275,6 +1372,9 @@ function onInput(e){
   if(field==='search'){ ui.search = el.value; paintBuscaDebounced('[data-field="search"]', el.selectionStart); return; }
   if(field==='hist-search'){ ui.histSearch = el.value; paintBuscaDebounced('[data-field="hist-search"]', el.selectionStart); return; }
   if(field==='user-search'){ ui.userSearch = el.value; paintBuscaDebounced('[data-field="user-search"]', el.selectionStart); return; }
+  if(field==='rel-area'){ ui.relArea = el.value; paint(); return; }
+  if(field==='rel-mes'){ ui.relMes = parseInt(el.value, 10) || (new Date().getMonth()+1); paint(); return; }
+  if(field==='rel-ano'){ ui.relAno = parseInt(el.value, 10) || new Date().getFullYear(); paint(); return; }
   if(field==='form-item'){ ui.formItemId = el.value; ui.formQty=1; ui.formFornecedor=''; ui.formMotivo=REASONS_SAIDA[0]; ui.formNota=''; var picked = findItem(el.value); ui.formUnidade = picked ? picked.unit : ''; paint(); return; }
   if(field==='form-qty'){ ui.formQty = el.value; return; }
   if(field==='form-fornecedor'){ ui.formFornecedor = el.value; return; }
