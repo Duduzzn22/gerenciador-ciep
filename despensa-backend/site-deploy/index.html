@@ -212,7 +212,7 @@ var ICONS = {
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.6"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.9-1.4-2-3.4-2.2.8a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.2-.8-2 3.4L4.6 10.5a7.6 7.6 0 0 0 0 3L2.7 14.9l2 3.4 2.2-.8a7.6 7.6 0 0 0 2.6 1.5l.5 2.5h4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l2.2.8 2-3.4z"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round"><path d="M5 5l14 14M19 5 5 19"/></svg>'
 };
-var UNITS = ['kg','L','un','pacote','cx','garrafa'];
+var UNITS_PADRAO = ['kg','L','un','pacote','cx','garrafa'];
 var REASONS_SAIDA = ['Preparo de refeição','Vencimento/Descarte','Perda ou quebra','Outro motivo'];
 
 function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -251,6 +251,11 @@ function categoriaVisivel(state, cat, ui){
   if(area==='todos') return true;
   return areaDaCategoria(state, cat) === area;
 }
+function unidadesEstado(state){
+  var us = (state && state.unidades) || [];
+  return us.length ? us : UNITS_PADRAO.map(function(nome){ return {nome:nome}; });
+}
+function nomeUnidade(u){ return (u && typeof u === 'object') ? u.nome : u; }
 
 /* ---------------------------------------------------------------------
    CSV — igual ao app anterior, só que lendo do novo formato de estado.
@@ -344,7 +349,7 @@ var auth = { session:null, profile:null, screen:'entrar', loading:true, error:''
 // PASSWORD_RECOVERY do Supabase disparar antes de mount() se inscrever
 // pra escutá-lo.
 var vindoDeRecuperacaoSenha = /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
-var state = { schoolName:'Cozinha da escola', items:[], movements:[], categorias:[], profiles:[], auditLog:[], planilhaMapa:[], arquivoMeses:12, ultimaExportacaoEm:null };
+var state = { schoolName:'Cozinha da escola', items:[], movements:[], categorias:[], unidades:[], profiles:[], auditLog:[], planilhaMapa:[], arquivoMeses:12, ultimaExportacaoEm:null };
 var ui = { tab:'estoque', search:'', userSearch:'', categoryFilter:'todas', grupoFilter:'todos', showLowOnly:false, modal:null, cadastroSub:'produtos',
   formItemId:'', formQty:1, formUnidade:'', formFornecedor:'', formMotivo:REASONS_SAIDA[0], formNota:'', histSearch:'', saving:false };
 var toastTimer = null;
@@ -596,7 +601,7 @@ function renderModal(state, ui){
       '<div class="modal-title">Adicionar novo item</div>' +
       '<div class="field"><label>Nome do item</label><input type="text" value="' + escHtml(f.name||'') + '" data-field="ni-nome" placeholder="Ex.: Molho shoyu"></div>' +
       '<div class="field"><label>Categoria</label><select data-field="ni-cat">' + categoriasEstado(state).map(function(c){var nome=nomeCategoria(c); return '<option' + (f.cat===nome?' selected':'') + '>' + escHtml(nome) + '</option>';}).join('') + '</select></div>' +
-      '<div class="field"><label>Unidade</label><select data-field="ni-un">' + UNITS.map(function(u){return '<option' + (f.unit===u?' selected':'') + '>' + escHtml(u) + '</option>';}).join('') + '</select></div>' +
+      '<div class="field"><label>Unidade</label><select data-field="ni-un">' + unidadesEstado(state).map(function(u){var nome=nomeUnidade(u); return '<option' + (f.unit===nome?' selected':'') + '>' + escHtml(nome) + '</option>';}).join('') + '</select></div>' +
       '<div class="field"><label>Quantidade inicial</label><input type="number" min="0" step="0.5" value="' + (f.qty==null?0:f.qty) + '" data-field="ni-qty"></div>' +
       '<div class="field"><label>Estoque mínimo (para alerta)</label><input type="number" min="0" step="0.5" value="' + (f.min==null?1:f.min) + '" data-field="ni-min"></div>' +
       '<div class="field-hint">Quando a quantidade em estoque chegar nesse número (ou menos), o item aparece com a etiqueta "Estoque baixo" e entra na lista de compras.</div>' +
@@ -654,7 +659,7 @@ function renderModal(state, ui){
       '<div class="field"><label>Estoque mínimo (para alerta)</label><input type="number" min="0" step="0.5" value="' + it.min + '" data-field="aj-min"></div>' +
       '<div class="field-hint">Quando a quantidade chegar nesse número (ou menos), o item aparece com a etiqueta "Estoque baixo".</div>' +
       (isAdmin() ?
-        '<div class="field"><label>Unidade</label><select data-field="aj-un">' + UNITS.map(function(u){ return '<option' + (it.unit===u?' selected':'') + '>' + escHtml(u) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label>Unidade</label><select data-field="aj-un">' + unidadesEstado(state).map(function(u){ var nome=nomeUnidade(u); return '<option' + (it.unit===nome?' selected':'') + '>' + escHtml(nome) + '</option>'; }).join('') + '</select></div>' +
         '<div class="field-hint">Mudar a unidade aqui não converte a quantidade já registrada — confira o número acima depois de trocar.</div>'
         : '') +
       (isAdmin() && areaDaCategoria(state, it.cat)==='cozinha' ?
@@ -680,7 +685,7 @@ function renderModal(state, ui){
 function renderCadastroSubChips(ui){
   var sub = ui.cadastroSub || 'produtos';
   function chip(id, label){ return '<button class="chip" type="button" data-action="set-cadastro-sub" data-sub="' + id + '" aria-pressed="' + (sub===id?'true':'false') + '">' + label + '</button>'; }
-  return '<div class="chip-row">' + chip('resumo','Resumo') + chip('produtos','Produtos') + chip('categorias','Categorias') + chip('usuarios','Usuários') + chip('dados','Dados') + chip('auditoria','Auditoria') + '</div>';
+  return '<div class="chip-row">' + chip('resumo','Resumo') + chip('produtos','Produtos') + chip('categorias','Categorias') + chip('unidades','Unidades') + chip('usuarios','Usuários') + chip('dados','Dados') + chip('auditoria','Auditoria') + '</div>';
 }
 function renderCadastroProdutos(state, ui){
   return '' +
@@ -715,6 +720,25 @@ function renderCadastroCategorias(state, ui){
       '<div class="field"><label>Nova categoria</label><input type="text" value="" data-field="cat-nova" placeholder="Ex.: Higiene"></div>' +
       '<div class="field"><label>Área</label><select data-field="cat-area"><option value="cozinha" selected>Cozinha</option><option value="limpeza">Limpeza</option></select></div>' +
       '<button class="btn btn-primary" type="button" data-action="adicionar-categoria">Adicionar categoria</button>' +
+    '</div>';
+}
+function renderCadastroUnidades(state, ui){
+  var uns = unidadesEstado(state);
+  var rows = uns.map(function(u){
+    var nome = nomeUnidade(u);
+    var total = state.items.filter(function(it){ return it.unit===nome; }).length;
+    return '<div class="cad-row categoria-row">' +
+      '<span>' + escHtml(nome) + ' <small>(' + total + ' produto' + (total===1?'':'s') + ')</small></span>' +
+      '<button class="undo-btn" type="button" data-action="remover-unidade" data-un-id="' + escHtml(u.id||'') + '" data-un="' + escHtml(nome) + '"' + (total?' disabled':'') + '>Remover</button>' +
+    '</div>';
+  }).join('');
+  return '' +
+    '<div class="section-title" style="font-size:15px">Unidades</div>' +
+    '<div style="font-size:12px;color:var(--muted)">São as unidades disponíveis para escolher ao cadastrar ou ajustar um produto (ex.: kg, L, un, caixa).</div>' +
+    '<div class="profile-list">' + rows + '</div>' +
+    '<div class="form">' +
+      '<div class="field"><label>Nova unidade</label><input type="text" value="" data-field="un-nova" placeholder="Ex.: Litro"></div>' +
+      '<button class="btn btn-primary" type="button" data-action="adicionar-unidade">Adicionar unidade</button>' +
     '</div>';
 }
 function renderCadastroUsuarios(state, ui){
@@ -807,7 +831,7 @@ function renderCadastroAuditoria(state, ui){
 }
 function renderCadastro(state, ui){
   var sub = ui.cadastroSub || 'produtos';
-  var body = sub==='resumo' ? renderCadastroResumo(state, ui) : (sub==='categorias' ? renderCadastroCategorias(state, ui) : (sub==='usuarios' ? renderCadastroUsuarios(state, ui) : (sub==='dados' ? renderCadastroDados(state, ui) : (sub==='auditoria' ? renderCadastroAuditoria(state, ui) : renderCadastroProdutos(state, ui)))));
+  var body = sub==='resumo' ? renderCadastroResumo(state, ui) : (sub==='categorias' ? renderCadastroCategorias(state, ui) : (sub==='unidades' ? renderCadastroUnidades(state, ui) : (sub==='usuarios' ? renderCadastroUsuarios(state, ui) : (sub==='dados' ? renderCadastroDados(state, ui) : (sub==='auditoria' ? renderCadastroAuditoria(state, ui) : renderCadastroProdutos(state, ui))))));
   return '<div class="section-title">Cadastro</div>' + renderCadastroSubChips(ui) + body;
 }
 function renderRoot(state, ui){
@@ -922,6 +946,10 @@ async function carregarTudo(){
   catsRes.data.forEach(function(c){ catsById[c.id] = c; });
   state.categorias = catsRes.data;
 
+  var unitsRes = await sb.from('units').select('*').order('created_at');
+  if(unitsRes.error) throw unitsRes.error;
+  state.unidades = unitsRes.data;
+
   var itemsRes = await sb.from('items').select('*');
   if(itemsRes.error) throw itemsRes.error;
   state.items = itemsRes.data.map(function(row){ return mapItem(row, catsById); });
@@ -985,6 +1013,7 @@ function ligarRealtime(){
     .on('postgres_changes', {event:'*', schema:'public', table:'items'}, function(){ recarregarSilencioso(); })
     .on('postgres_changes', {event:'*', schema:'public', table:'movements'}, function(){ recarregarSilencioso(); })
     .on('postgres_changes', {event:'*', schema:'public', table:'categories'}, function(){ recarregarSilencioso(); })
+    .on('postgres_changes', {event:'*', schema:'public', table:'units'}, function(){ recarregarSilencioso(); })
     .on('postgres_changes', {event:'*', schema:'public', table:'profiles'}, function(){ recarregarSilencioso(); })
     .on('postgres_changes', {event:'*', schema:'public', table:'settings'}, function(){ recarregarSilencioso(); })
     .subscribe();
@@ -1176,7 +1205,7 @@ function onClick(e){
     if(!exigirAdmin()) return;
     var catsList = categoriasEstado(state);
     var catInicial = catsList.length ? nomeCategoria(catsList[0]) : '';
-    ui.modal = {type:'novo-item', cat:catInicial, unit:UNITS[0], qty:0, min:1};
+    ui.modal = {type:'novo-item', cat:catInicial, unit:nomeUnidade(unidadesEstado(state)[0]), qty:0, min:1};
     paint();
     return;
   }
@@ -1209,6 +1238,32 @@ function onClick(e){
       await registrarAuditoria('categoria', quemAtual() + ' removeu a categoria "' + catRem + '".');
     }, 'Categoria removida.');
     if(ui.categoryFilter===catRem) ui.categoryFilter = 'todas';
+    return;
+  }
+  if(action==='adicionar-unidade'){
+    if(!exigirAdmin()) return;
+    var novaUn = ((document.querySelector('[data-field="un-nova"]')||{}).value || '').trim();
+    if(!novaUn){ toast('Digite o nome da unidade.'); return; }
+    var unExiste = unidadesEstado(state).filter(function(u){ return normalizar(nomeUnidade(u))===normalizar(novaUn); })[0];
+    if(unExiste){ toast('Essa unidade já existe.'); return; }
+    executarAcao(async function(){
+      var res = await sb.from('units').insert({ nome: novaUn });
+      if(res.error) throw res.error;
+      await registrarAuditoria('unidade', quemAtual() + ' criou a unidade "' + novaUn + '".');
+    }, 'Unidade adicionada!');
+    return;
+  }
+  if(action==='remover-unidade'){
+    if(!exigirAdmin()) return;
+    var unId = el.getAttribute('data-un-id');
+    var unRem = el.getAttribute('data-un');
+    var unEmUso = state.items.filter(function(it){ return it.unit===unRem; }).length;
+    if(unEmUso){ toast('Só dá para remover unidade sem produto.'); return; }
+    executarAcao(async function(){
+      var res = await sb.from('units').delete().eq('id', unId);
+      if(res.error) throw res.error;
+      await registrarAuditoria('unidade', quemAtual() + ' removeu a unidade "' + unRem + '".');
+    }, 'Unidade removida.');
     return;
   }
   if(action==='editar-perfil'){
@@ -1276,7 +1331,7 @@ function onClick(e){
     var catNome = (document.querySelector('[data-field="ni-cat"]')||{}).value || nomeCategoria(categoriasEstado(state)[0]);
     var catObj = state.categorias.filter(function(c){ return c.nome===catNome; })[0];
     if(!catObj){ toast('Categoria inválida.'); return; }
-    var unit = (document.querySelector('[data-field="ni-un"]')||{}).value || UNITS[0];
+    var unit = (document.querySelector('[data-field="ni-un"]')||{}).value || nomeUnidade(unidadesEstado(state)[0]);
     var qty = round2(parseFloat((document.querySelector('[data-field="ni-qty"]')||{}).value) || 0);
     var min = round2(parseFloat((document.querySelector('[data-field="ni-min"]')||{}).value) || 0);
     var nomeParecido = state.items.filter(function(it){ return it.cat===catNome && normalizar(it.name)===normalizar(name); })[0];

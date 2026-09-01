@@ -33,6 +33,7 @@
       users: clone(seed.users) || [],       // {id,email,password,user_metadata}
       profiles: clone(seed.profiles) || [], // {id,name,role,area,created_at}
       categories: clone(seed.categories) || [],
+      units: seed.units !== undefined ? clone(seed.units) : ['kg', 'L', 'un', 'pacote', 'cx', 'garrafa'].map(function (nome) { return { id: uid(), nome: nome, created_at: nowIso() }; }),
       items: clone(seed.items) || [],
       movements: clone(seed.movements) || [],
       audit_log: clone(seed.audit_log) || [],
@@ -135,7 +136,7 @@
     }
     function checarSelectRLS(table, rows) {
       if (!session) return [];
-      if (table === 'profiles' || table === 'categories' || table === 'settings') return rows;
+      if (table === 'profiles' || table === 'categories' || table === 'units' || table === 'settings') return rows;
       if (table === 'items') return rows.filter(function (i) { return podeVerArea(categoriaArea(i.category_id)); });
       if (table === 'movements') return rows.filter(function (m) { return podeVerArea(itemArea(m.item_id)); });
       if (table === 'audit_log') return isAdmin() ? rows : [];
@@ -183,9 +184,18 @@
           fireRealtime('categories');
           return { data: clone(novaCat), error: null };
         }
+        if (table === 'units') {
+          if (!isAdmin()) return { data: null, error: err('new row violates row-level security policy for table units') };
+          var jaExisteUn = db.units.some(function (u) { return u.nome === qb.payload.nome; });
+          if (jaExisteUn) return { data: null, error: err('duplicate key value violates unique constraint "units_nome_key"') };
+          var novaUn = Object.assign({ id: uid(), created_at: nowIso() }, qb.payload);
+          db.units.push(novaUn);
+          fireRealtime('units');
+          return { data: clone(novaUn), error: null };
+        }
         if (table === 'audit_log') {
           if (qb.payload.actor_id !== session.user.id) return { data: null, error: err('new row violates row-level security policy for table audit_log') };
-          var validTipos = ['perfil', 'categoria', 'config', 'arquivamento', 'produto', 'ajuste'];
+          var validTipos = ['perfil', 'categoria', 'unidade', 'config', 'arquivamento', 'produto', 'ajuste'];
           if (validTipos.indexOf(qb.payload.tipo) === -1) return { data: null, error: err('new row violates check constraint "audit_log_tipo_check"') };
           var novoLog = Object.assign({ id: uid(), em: nowIso() }, qb.payload);
           db.audit_log.push(novoLog);
@@ -304,6 +314,13 @@
           var idsRemCats = aplicaFiltros(linhasBase('categories'), qb.filters).map(function (c) { return c.id; });
           db.categories = db.categories.filter(function (c) { return idsRemCats.indexOf(c.id) === -1; });
           fireRealtime('categories');
+          return { data: null, error: null };
+        }
+        if (table === 'units') {
+          if (!isAdmin()) return { data: null, error: err('new row violates row-level security policy for table units') };
+          var idsRemUns = aplicaFiltros(linhasBase('units'), qb.filters).map(function (u) { return u.id; });
+          db.units = db.units.filter(function (u) { return idsRemUns.indexOf(u.id) === -1; });
+          fireRealtime('units');
           return { data: null, error: null };
         }
         if (table === 'profiles') {
