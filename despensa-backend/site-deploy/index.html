@@ -855,6 +855,24 @@ function mapItem(row, catsById){
 function mapMovement(row){
   return { id: row.id, itemId: row.item_id, type: row.type, qty: Number(row.qty), unidade: row.unidade, who: row.who_name, whoId: row.who_id, fornecedor: row.fornecedor, motivo: row.motivo, nota: row.nota, at: row.at, estornado: row.estornado, estornadoPor: row.estornado_por_nome, estornadoEm: row.estornado_em };
 }
+function normalizarCategoriasDuplicadas(state){
+  var alvo = null, duplicada = null;
+  state.categorias.forEach(function(c){
+    if(c.nome === 'Descartáveis') alvo = c;
+    if(c.nome === 'Descartável') duplicada = c;
+  });
+  if(!alvo || !duplicada) return 0;
+  var afetados = 0;
+  state.items.forEach(function(it){
+    if(it.category_id === duplicada.id || it.cat === duplicada.nome){
+      it.category_id = alvo.id;
+      it.cat = alvo.nome;
+      afetados++;
+    }
+  });
+  state.categorias = state.categorias.filter(function(c){ return c.id !== duplicada.id; });
+  return afetados;
+}
 async function carregarTudo(){
   var catsRes = await sb.from('categories').select('*').order('nome');
   if(catsRes.error) throw catsRes.error;
@@ -869,6 +887,7 @@ async function carregarTudo(){
   var itemsRes = await sb.from('items').select('*');
   if(itemsRes.error) throw itemsRes.error;
   state.items = itemsRes.data.map(function(row){ return mapItem(row, catsById); });
+  normalizarCategoriasDuplicadas(state);
 
   var movsRes = await sb.from('movements').select('*').order('at', {ascending:false}).limit(2000);
   if(movsRes.error) throw movsRes.error;
