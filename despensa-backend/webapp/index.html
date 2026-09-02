@@ -529,9 +529,11 @@ function renderCadastroProdutos(state, ui){
   return '' +
     '<div class="section-title" style="font-size:15px">Produtos</div>' +
     '<div style="font-size:12px;color:var(--muted)">Para remover um produto, abra o item no Estoque (ícone de engrenagem) e use "Remover item".</div>' +
-    '<button class="btn btn-primary" type="button" data-action="novo-item">+ Cadastrar produto</button>' +
-    '<a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="conferencia-nf.html">&#128247; Importar de nota fiscal (foto)</a>' +
-    '<a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="sync-planilha.html">&#128190; Sincronizar com a planilha (Merenda)</a>';
+    '<div class="admin-action-grid">' +
+      '<div class="admin-action-card"><div><div class="admin-action-title">Novo produto</div><div class="field-hint">Cadastre manualmente um item no estoque.</div></div><button class="btn btn-primary" type="button" data-action="novo-item">Cadastrar produto</button></div>' +
+      '<div class="admin-action-card"><div><div class="admin-action-title">Importar nota fiscal</div><div class="field-hint">Cadastre itens a partir de uma nota.</div></div><a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="conferencia-nf.html">Importar nota fiscal</a></div>' +
+      '<div class="admin-action-card"><div><div class="admin-action-title">Sincronização Merenda</div><div class="field-hint">Sincronize dados com a planilha existente.</div></div><a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:block" href="sync-planilha.html">Sincronizar planilha</a></div>' +
+    '</div>';
 }
 function renderCadastroCategorias(state, ui){
   var cats = categoriasEstado(state);
