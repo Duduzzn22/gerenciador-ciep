@@ -27,7 +27,7 @@ var SUPABASE_URL = "https://jqmnboteogreoomayxpo.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxbW5ib3Rlb2dyZW9vbWF5eHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDM1MTUsImV4cCI6MjEwMzAxOTUxNX0.FbpvWGxMXmaJxhz2NDOv4hDmA5ttmrLYfZTUFEEVv_c";
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var NOMES_MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-var state={carregando:true,admin:false,nomeAdmin:'',lendo:false,aplicando:false,dados:null,correspondentes:[],naoEncontrados:[],items:[],categories:[],mapa:[],erro:''};
+var state={carregando:true,admin:false,nomeAdmin:'',lendo:false,aplicando:false,dados:null,correspondentes:[],novos:[],items:[],categories:[],mapa:[],erro:''};
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
 function norm(s){return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
@@ -57,18 +57,39 @@ function mapearLinhas(linhas){
   var itensCozinha=state.items.filter(function(i){return cats[i.category_id]&&cats[i.category_id].area==='cozinha'});
   var porGenero={};state.mapa.forEach(function(m){if(m.genero_planilha)porGenero[norm(m.genero_planilha)]=m.item_id});
   var porNome={};itensCozinha.forEach(function(i){var k=norm(i.name);if(!porNome[k])porNome[k]=i});
-  var usados={};var ok=[];var sem=[];
+  var usados={};var existentes=[];var novos=[];
   linhas.forEach(function(l){
     var item=null;var origem='';
     var id=porGenero[norm(l.genero_planilha)];
-    if(id&&itensCozinha.some(function(x){return x.id===id})){item=itensCozinha.filter(function(x){return x.id===id})[0];origem='mapeamento'}
+    if(id){
+      var candidatos=itensCozinha.filter(function(x){return x.id===id});
+      if(candidatos.length){item=candidatos[0];origem='mapeamento'}
+    }
     if(!item&&porNome[norm(l.genero_planilha)]){item=porNome[norm(l.genero_planilha)];origem='nome'}
     if(item&&!usados[item.id]){
       usados[item.id]=true;
-      ok.push({item_id:item.id,item_nome:item.name,unidade:item.unit,qty_atual:Number(item.qty)||0,genero_planilha:l.genero_planilha,unidade_planilha:l.unidade_planilha||'',estoque_final:Number(l.estoque_final)||0,origem:origem});
-    }else if(!item){sem.push(l)}
+      existentes.push({
+        item_id:item.id,
+        item_nome:item.name,
+        unidade:item.unit,
+        qty_atual:Number(item.qty)||0,
+        genero_planilha:l.genero_planilha,
+        unidade_planilha:l.unidade_planilha||'',
+        estoque_final:Number(l.estoque_final)||0,
+        origem:origem
+      });
+    }else if(!item){
+      novos.push({
+        item_id:null,
+        item_nome:l.genero_planilha,
+        genero_planilha:l.genero_planilha,
+        unidade_planilha:l.unidade_planilha||'',
+        estoque_final:Number(l.estoque_final)||0
+      });
+    }
   });
-  state.correspondentes=ok;state.naoEncontrados=sem;
+  state.correspondentes=existentes;
+  state.novos=novos;
 }
 
 async function ler(){
@@ -86,18 +107,53 @@ async function ler(){
 }
 
 async function aplicar(){
-  if(!state.dados||!state.correspondentes.length)return;
+  if(!state.dados)return;
+  var total=state.correspondentes.length+state.novos.length;
+  if(!total)return;
   var destino=state.dados.mesDestino;
-  if(!confirm('Aplicar o estoque final de '+state.dados.mesOrigem.nome+'/'+state.dados.mesOrigem.ano+' como estoque inicial de '+destino.nome+'/'+destino.ano+' para '+state.correspondentes.length+' produto(s)?'))return;
+  var msg='Importar '+total+' produto(s)?\n\n'+
+    state.correspondentes.length+' já cadastrado(s): a quantidade da planilha será SOMADA ao estoque atual.\n'+
+    state.novos.length+' novo(s): serão cadastrados automaticamente com a quantidade da planilha.';
+  if(!confirm(msg))return;
   state.aplicando=true;state.erro='';render();
   try{
-    var payload=state.correspondentes.map(function(x){return{item_id:x.item_id,genero_planilha:x.genero_planilha,estoque_inicial:x.estoque_final}});
-    var r=await sb.rpc('aplicar_estoque_inicial_planilha',{p_ano:destino.ano,p_mes:destino.mes,p_arquivo:state.dados.arquivo.nome,p_itens:payload});
+    var payload=[];
+    state.correspondentes.forEach(function(x){
+      payload.push({
+        item_id:x.item_id,
+        nome_produto:x.item_nome,
+        genero_planilha:x.genero_planilha,
+        unidade_planilha:x.unidade_planilha||x.unidade||'',
+        estoque_inicial:x.estoque_final
+      });
+    });
+    state.novos.forEach(function(x){
+      payload.push({
+        item_id:null,
+        nome_produto:x.item_nome,
+        genero_planilha:x.genero_planilha,
+        unidade_planilha:x.unidade_planilha||'',
+        estoque_inicial:x.estoque_final
+      });
+    });
+    var r=await sb.rpc('aplicar_estoque_inicial_planilha',{
+      p_ano:destino.ano,
+      p_mes:destino.mes,
+      p_arquivo:state.dados.arquivo.nome,
+      p_itens:payload
+    });
     if(r.error)throw r.error;
-    toast((r.data&&r.data.atualizados||payload.length)+' produto(s) atualizado(s).');
-    var itens=await sb.from('items').select('*');if(!itens.error)state.items=itens.data||[];
+    var resumo=r.data||{};
+    toast((resumo.atualizados||0)+' atualizado(s), '+(resumo.criados||0)+' criado(s).');
+    var rs=await Promise.all([
+      sb.from('items').select('*'),
+      sb.from('planilha_merenda_mapa').select('*')
+    ]);
+    if(!rs[0].error)state.items=rs[0].data||[];
+    if(!rs[1].error)state.mapa=rs[1].data||[];
     mapearLinhas(state.dados.itens||[]);
     state.dados.aplicado=true;
+    state.dados.resumoAplicacao=resumo;
   }catch(e){state.erro=e.message||String(e)}
   state.aplicando=false;render();
 }
@@ -108,21 +164,32 @@ function render(){
   if(!state.admin){c.innerHTML='<div class="crit-box">Esta função é exclusiva para administradores.</div>';return}
   var hoje=new Date(),ano=hoje.getFullYear(),mes=hoje.getMonth()+1,orig=mesAnterior(ano,mes);
   var h='<div class="form"><div class="section-title">Estoque inicial de '+esc(NOMES_MES[mes-1])+'/'+ano+'</div>'+
-    '<div class="info-box">O sistema vai abrir a planilha de <b>'+esc(NOMES_MES[orig.mes-1])+'/'+orig.ano+'</b>, aba <b>MENSAL</b>, e considerar somente as linhas cujo <b>Estoque Final seja maior que zero</b>. Esse valor vira a base do estoque de '+esc(NOMES_MES[mes-1])+'.</div>'+
-    '<div class="muted">A importação não cria uma "Entrada" fictícia. Se já houver entradas ou saídas registradas neste mês, elas são preservadas e somadas/subtraídas da base importada.</div>'+
+    '<div class="info-box">O sistema vai abrir a planilha de <b>'+esc(NOMES_MES[orig.mes-1])+'/'+orig.ano+'</b>, aba <b>MENSAL</b>, e considerar somente as linhas cujo <b>Estoque Final seja maior que zero</b>.</div>'+
+    '<div class="muted">Se o produto já existir no app, a quantidade da planilha será <b>somada</b> ao estoque atual. Se não existir, o produto será <b>cadastrado automaticamente</b> na categoria Merenda, já com a quantidade da planilha.</div>'+
     '<button class="btn btn-primary" '+(state.lendo?'disabled':'')+' onclick="ler()">'+(state.lendo?'Lendo planilha...':'Ler estoque final de '+esc(NOMES_MES[orig.mes-1]))+'</button></div>';
   if(state.erro)h+='<div class="crit-box">'+esc(state.erro)+'</div>';
   if(state.dados){
+    var total=state.correspondentes.length+state.novos.length;
     h+='<div class="form"><div class="section-title">Conferência antes de aplicar</div>'+
       '<div class="arquivo"><b>Arquivo:</b> '+esc(state.dados.arquivo.nome)+'<br><b>Aba:</b> '+esc(state.dados.arquivo.aba)+'<br><b>Origem:</b> '+esc(state.dados.mesOrigem.nome)+'/'+state.dados.mesOrigem.ano+' &rarr; <b>Destino:</b> '+esc(state.dados.mesDestino.nome)+'/'+state.dados.mesDestino.ano+'</div>'+
-      '<div class="muted">'+state.correspondentes.length+' produto(s) encontrados no app. Produtos com Estoque Final = 0 foram ignorados.</div>';
-    state.correspondentes.forEach(function(x){h+='<div class="linha"><div><div class="nome">'+esc(x.item_nome)+'</div><div class="sub">Excel: '+esc(x.genero_planilha)+(x.origem==='nome'?' · correspondência pelo nome':' · correspondência pelo mapeamento')+'</div></div><div class="qtd">'+fmt(x.estoque_final)+' '+esc(x.unidade)+'<div class="atual">Atual no app: '+fmt(x.qty_atual)+'</div></div></div>'});
-    if(state.naoEncontrados.length){
-      h+='<div class="warn-box">'+state.naoEncontrados.length+' linha(s) da planilha não têm correspondência no app e NÃO serão importadas.</div>';
-      state.naoEncontrados.forEach(function(x){h+='<div class="linha"><div><div class="nome">'+esc(x.genero_planilha)+'</div><div class="sub">Ajuste o campo "Linha no Mapa de Merenda (Gênero)" no produto correspondente.</div></div><div class="qtd">'+fmt(x.estoque_final)+'</div></div>'});
+      '<div class="muted"><b>'+state.correspondentes.length+'</b> já cadastrado(s) + <b>'+state.novos.length+'</b> novo(s). Produtos com Estoque Final = 0 foram ignorados.</div>';
+    if(state.correspondentes.length){
+      h+='<div class="info-box"><b>Já cadastrados:</b> a quantidade abaixo será somada ao estoque atual.</div>';
+      state.correspondentes.forEach(function(x){
+        h+='<div class="linha"><div><div class="nome">'+esc(x.item_nome)+'</div><div class="sub">Já existe no app · '+(x.origem==='nome'?'correspondência pelo nome':'correspondência pelo mapeamento')+'</div></div><div class="qtd">+ '+fmt(x.estoque_final)+' '+esc(x.unidade||x.unidade_planilha||'')+'<div class="atual">Atual: '+fmt(x.qty_atual)+' → depois: '+fmt(x.qty_atual+x.estoque_final)+'</div></div></div>';
+      });
     }
-    if(state.dados.aplicado)h+='<div class="info-box"><b>Importação aplicada.</b> Repetir a importação é seguro: a base mensal é atualizada e as movimentações já feitas neste mês são recalculadas sobre ela.</div>';
-    h+='<button class="btn btn-primary" '+(state.aplicando||!state.correspondentes.length?'disabled':'')+' onclick="aplicar()">'+(state.aplicando?'Aplicando...':'Confirmar estoque inicial ('+state.correspondentes.length+' produtos)')+'</button>'+
+    if(state.novos.length){
+      h+='<div class="warn-box"><b>Novos produtos:</b> serão cadastrados automaticamente na categoria Merenda.</div>';
+      state.novos.forEach(function(x){
+        h+='<div class="linha"><div><div class="nome">'+esc(x.item_nome)+'</div><div class="sub">Novo produto · cadastro automático</div></div><div class="qtd">'+fmt(x.estoque_final)+' '+esc(x.unidade_planilha||'')+'</div></div>';
+      });
+    }
+    if(state.dados.aplicado){
+      var ra=state.dados.resumoAplicacao||{};
+      h+='<div class="info-box"><b>Importação aplicada.</b> '+(ra.atualizados||0)+' produto(s) atualizado(s) e '+(ra.criados||0)+' produto(s) criado(s). Repetir a mesma importação no mesmo mês não duplica as quantidades.</div>';
+    }
+    h+='<button class="btn btn-primary" '+(state.aplicando||!total?'disabled':'')+' onclick="aplicar()">'+(state.aplicando?'Aplicando...':'Confirmar importação ('+total+' produtos)')+'</button>'+
       '<button class="btn btn-ghost" '+(state.lendo?'disabled':'')+' onclick="ler()">Ler a planilha novamente</button></div>';
   }
   c.innerHTML=h;
