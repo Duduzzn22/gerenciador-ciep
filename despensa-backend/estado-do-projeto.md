@@ -38,6 +38,15 @@ anteriores (`fix-auditoria-tipo.sql`, `fix-area-ambas.sql`,
 `fix-fk-historico.sql`, `fix-protecao-admin.sql`), pode rodar todos de novo
 sem medo — são todos seguros de rodar mais de uma vez.
 
+
+## Importação do estoque inicial pelo mês anterior
+
+Nova opção em **Cadastro > Produtos > "Importar estoque inicial da planilha"**. O app usa a mesma integração do Google Drive já existente, abre automaticamente a planilha do **mês anterior**, lê a aba **MENSAL** e importa somente os produtos cujo **Estoque Final > 0**. O valor passa a ser a base do estoque do mês atual.
+
+A importação é segura para repetição: ela não cria uma movimentação de "Entrada" fictícia. Se já houver entradas/saídas registradas no mês atual, o banco recalcula estoque atual = estoque inicial importado + entradas - saídas, preservando as movimentações reais. A correspondência usa primeiro o mapeamento planilha_merenda_mapa e, como alternativa, nome exatamente equivalente após normalização. Linhas sem correspondência aparecem na conferência e não são aplicadas.
+
+**Configuração necessária:** rodar `fix-estoque-inicial-planilha.sql` no SQL Editor e republicar a Edge Function `sync-planilha`. Não há segredo novo do Google: reutiliza a mesma conta de serviço da sincronização já existente.
+
 ## Importação de Nota Fiscal por foto (novidade desta rodada)
 
 Agora existe uma tela nova, **Cadastro > Produtos > "Importar de nota

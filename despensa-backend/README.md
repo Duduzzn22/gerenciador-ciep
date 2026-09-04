@@ -18,12 +18,13 @@ continuidade do projeto, mantido atualizado a cada rodada de mudanças.
   - `ler-nf/` — leitura automática de nota fiscal por foto (IA do Google
     Gemini).
   - `sync-planilha/` — sincronização das movimentações de estoque de
-    Cozinha com a planilha "Mapa de Merenda" no Google Drive.
+    Cozinha com a planilha "Mapa de Merenda" no Google Drive e leitura do
+    Estoque Final do mês anterior para formar o estoque inicial do mês atual.
   - `alerta-estoque-baixo/` — alerta por e-mail quando um item fica em
     falta ou com estoque baixo.
 - **`schema.sql`** — schema completo e atualizado do banco de dados.
 - **`fix-*.sql`** — scripts incrementais de migração, todos seguros de
-  rodar mais de uma vez (idempotentes).
+  rodar mais de uma vez (idempotentes), incluindo `fix-estoque-inicial-planilha.sql`.
 
 ## Segredos e configuração
 
