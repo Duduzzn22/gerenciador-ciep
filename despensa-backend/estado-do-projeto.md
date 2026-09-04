@@ -47,6 +47,11 @@ A importação é segura para repetição: ela não cria uma movimentação de "
 
 **Configuração necessária:** rodar `fix-estoque-inicial-planilha.sql` no SQL Editor e republicar a Edge Function `sync-planilha`. Não há segredo novo do Google: reutiliza a mesma conta de serviço da sincronização já existente.
 
+
+### Ajuste posterior — auto-cadastro na importação do estoque inicial
+
+A tela de importação agora não bloqueia linhas sem correspondência. Produtos já existentes recebem a quantidade importada por soma; produtos inexistentes são criados automaticamente na categoria **Merenda** com a unidade informada na planilha. A função mantém controle por mês para que repetir a mesma importação não duplique o saldo, e cria/atualiza automaticamente o mapeamento `planilha_merenda_mapa`.
+
 ## Importação de Nota Fiscal por foto (novidade desta rodada)
 
 Agora existe uma tela nova, **Cadastro > Produtos > "Importar de nota
