@@ -262,6 +262,63 @@ function editarPlanilha(bytesOriginais, itens) {
 }
 
 /* ---------------------------------------------------------------------
+   LEITURA DO ESTOQUE FINAL DO MÊS ANTERIOR — usada pelo botão
+   "Importar estoque inicial da planilha". Esta operação é SOMENTE LEITURA:
+   baixa o .xlsx, lê a aba MENSAL e devolve Gênero + Estoque Final > 0.
+--------------------------------------------------------------------- */
+function numeroPlanilha(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  var s = String(v == null ? '' : v).trim().replace(/\s/g, '');
+  if (!s) return 0;
+  if (s.indexOf(',') !== -1 && s.indexOf('.') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+  else if (s.indexOf(',') !== -1) s = s.replace(',', '.');
+  var n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+function acharCabecalhoEstoqueFinal(aoa) {
+  for (var r = 0; r < Math.min(aoa.length, 20); r++) {
+    var linha = aoa[r] || [];
+    var idx = {};
+    linha.forEach(function (celula, c) {
+      var n = normalizar(celula);
+      if (/genero/.test(n)) idx.genero = c;
+      else if (n === 'estoque final' || /estoque\s*final/.test(n)) idx.estoqueFinal = c;
+      else if (n === 'unidade de medida' || n === 'unidade' || /unidade.*medida/.test(n)) idx.unidade = c;
+    });
+    if (idx.genero != null && idx.estoqueFinal != null) {
+      idx.linhaCabecalho = r;
+      return idx;
+    }
+  }
+  return null;
+}
+function lerEstoqueFinalPlanilha(bytesOriginais) {
+  var wb = XLSX.read(bytesOriginais, { type: 'array', cellStyles: true });
+  var nomeAba = wb.SheetNames.filter(function (n) { return normalizar(n) === 'mensal'; })[0] || wb.SheetNames[0];
+  var ws = wb.Sheets[nomeAba];
+  var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  var cab = acharCabecalhoEstoqueFinal(aoa);
+  if (!cab) {
+    throw new Error('Não consegui identificar as colunas "Gênero" e "Estoque Final" na aba "' + nomeAba + '". Confirme se o cabeçalho da planilha não mudou.');
+  }
+
+  var itens = [];
+  for (var r = cab.linhaCabecalho + 1; r < aoa.length; r++) {
+    var linha = aoa[r] || [];
+    var genero = String(linha[cab.genero] == null ? '' : linha[cab.genero]).trim();
+    var estoqueFinal = numeroPlanilha(linha[cab.estoqueFinal]);
+    if (!genero || estoqueFinal <= 0) continue;
+    itens.push({
+      genero_planilha: genero,
+      unidade_planilha: cab.unidade != null ? String(linha[cab.unidade] == null ? '' : linha[cab.unidade]).trim() : '',
+      estoque_final: estoqueFinal,
+      linha_excel: r + 1,
+    });
+  }
+  return { aba: nomeAba, itens: itens };
+}
+
+/* ---------------------------------------------------------------------
    HANDLER
 --------------------------------------------------------------------- */
 Deno.serve(async (req) => {
@@ -292,15 +349,47 @@ Deno.serve(async (req) => {
 
     // ---- Lê o corpo da requisição ----------------------------------------
     var body = await req.json().catch(() => null);
+    var acao = (body && body.acao) || 'sincronizar';
     var itens = (body && Array.isArray(body.itens)) ? body.itens : [];
     var agora = new Date();
-    var ano = (body && body.ano) || agora.getFullYear();
-    var mes = (body && body.mes) || (agora.getMonth() + 1);
+    var ano = Number((body && body.ano) || agora.getFullYear());
+    var mes = Number((body && body.mes) || (agora.getMonth() + 1));
 
+    if (!Number.isInteger(ano) || ano < 2020 || ano > 2100 || !Number.isInteger(mes) || mes < 1 || mes > 12) {
+      return jsonResp({ ok: false, erro: 'Ano/mês inválidos.' }, 400);
+    }
+
+    // A mesma conta de serviço já usada para ESCRITA também serve para a
+    // leitura do estoque final do mês anterior. Nenhuma configuração nova
+    // do Google é necessária.
+    var token = await obterTokenAcessoGoogle(GOOGLE_EMAIL, GOOGLE_CHAVE.replace(/\\n/g, '\n'), 'https://www.googleapis.com/auth/drive');
+
+    if (acao === 'ler-estoque-anterior') {
+      var mesOrigem = mes - 1;
+      var anoOrigem = ano;
+      if (mesOrigem === 0) { mesOrigem = 12; anoOrigem -= 1; }
+
+      var achadoAnterior = await localizarPlanilhaDoMes(token, anoOrigem, mesOrigem);
+      if (!achadoAnterior.encontrada) {
+        return jsonResp({ ok: false, naoEncontrado: true, procurou: achadoAnterior.procurou, erro: achadoAnterior.mensagem });
+      }
+
+      var bytesAnterior = await driveBaixarConteudo(token, achadoAnterior.arquivo.id);
+      var leitura = lerEstoqueFinalPlanilha(bytesAnterior);
+      return jsonResp({
+        ok: true,
+        modo: 'estoque-inicial',
+        mesOrigem: { ano: anoOrigem, mes: mesOrigem, nome: NOMES_MES[mesOrigem - 1] },
+        mesDestino: { ano: ano, mes: mes, nome: NOMES_MES[mes - 1] },
+        arquivo: { nome: achadoAnterior.arquivo.name, aba: leitura.aba },
+        itens: leitura.itens,
+      });
+    }
+
+    if (acao !== 'sincronizar') return jsonResp({ ok: false, erro: 'Ação desconhecida.' }, 400);
     if (!itens.length) return jsonResp({ ok: true, semItensPendentes: true });
 
-    // ---- Autentica com o Google e localiza a planilha do mês -------------
-    var token = await obterTokenAcessoGoogle(GOOGLE_EMAIL, GOOGLE_CHAVE.replace(/\\n/g, '\n'), 'https://www.googleapis.com/auth/drive');
+    // ---- Localiza a planilha do mês atual para a sincronização normal ----
     var achado = await localizarPlanilhaDoMes(token, ano, mes);
     if (!achado.encontrada) {
       return jsonResp({ ok: false, naoEncontrado: true, procurou: achado.procurou, erro: achado.mensagem });

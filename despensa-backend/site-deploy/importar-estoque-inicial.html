@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Importar Estoque Inicial — Despensa Digital</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F6F5C">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F6F5;--surface:#FFFFFF;--surface-2:#EDF1EF;--ink:#1F2A28;--muted:#5B6B67;--line:#DCE3E1;--accent:#1F6F5C;--accent-ink:#0F3E33;--accent-soft:#E4F0EC;--warn:#A8660F;--warn-soft:#FBEDD8;--crit:#B3392C;--crit-soft:#FBE4E1;--shadow:0 1px 2px rgba(20,30,28,.06),0 4px 14px rgba(20,30,28,.06)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121716;--surface:#1B2422;--surface-2:#212B29;--ink:#E9EEEC;--muted:#9BAAA6;--line:#2B3634;--accent:#4FBF9E;--accent-ink:#DFF6EE;--accent-soft:#1E3530;--warn:#E0A542;--warn-soft:#3A2C15;--crit:#E2695C;--crit-soft:#3A211D;--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35)}}
+*,*::before,*::after{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Public Sans',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}#root{max-width:680px;margin:0 auto;min-height:100vh;padding-bottom:40px}.topbar{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:5}.voltar-link{color:var(--accent);text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap}.brand-name,.section-title{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:700}.brand-name{font-size:20px;color:var(--accent-ink)}.section-title{font-size:18px}#conteudo{padding:16px;display:flex;flex-direction:column;gap:16px}.form{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}.btn{border:none;border-radius:12px;padding:13px 16px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}.btn-primary{background:var(--accent);color:#fff}.btn-primary:disabled{opacity:.5;cursor:default}.btn-ghost{background:var(--surface-2);color:var(--ink)}.info-box{background:var(--accent-soft);color:var(--accent-ink);border-radius:10px;padding:11px 13px;font-size:13px}.warn-box{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:11px 13px;font-size:13px;font-weight:600}.crit-box{background:var(--crit-soft);color:var(--crit);border-radius:10px;padding:12px 14px;font-size:13px}.muted{font-size:12px;color:var(--muted)}.arquivo{padding:12px;border-radius:10px;background:var(--surface-2);font-size:13px}.linha{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:11px 12px}.nome{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:600;font-size:16px}.sub{font-size:11px;color:var(--muted);margin-top:2px}.qtd{text-align:right;font-weight:800;color:var(--accent-ink);white-space:nowrap}.atual{font-size:11px;color:var(--muted);font-weight:500;margin-top:2px}.spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto}@keyframes spin{to{transform:rotate(360deg)}}.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:all .2s;z-index:50;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="root"><div class="topbar"><a class="voltar-link" href="index.html">&larr; Voltar</a><span class="brand-name">Importar estoque inicial</span></div><div id="conteudo"></div></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var SUPABASE_URL = "https://jqmnboteogreoomayxpo.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxbW5ib3Rlb2dyZW9vbWF5eHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NDM1MTUsImV4cCI6MjEwMzAxOTUxNX0.FbpvWGxMXmaJxhz2NDOv4hDmA5ttmrLYfZTUFEEVv_c";
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var NOMES_MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+var state={carregando:true,admin:false,nomeAdmin:'',lendo:false,aplicando:false,dados:null,correspondentes:[],naoEncontrados:[],items:[],categories:[],mapa:[],erro:''};
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]})}
+function norm(s){return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim()}
+function fmt(n){var v=Number(n)||0;return v.toLocaleString('pt-BR',{maximumFractionDigits:3})}
+function toast(msg){var e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2800)}
+function mesAnterior(ano,mes){return mes===1?{ano:ano-1,mes:12}:{ano:ano,mes:mes-1}}
+
+async function init(){
+  var s=(await sb.auth.getSession()).data.session;
+  if(!s){location.href='index.html';return}
+  var perfil=await sb.from('profiles').select('name, role').eq('id',s.user.id).single();
+  if(perfil.error||!perfil.data){state.carregando=false;state.erro='Não consegui carregar seu perfil.';render();return}
+  state.nomeAdmin=perfil.data.name||'Admin'; state.admin=perfil.data.role==='admin';
+  if(state.admin){
+    var rs=await Promise.all([
+      sb.from('items').select('*'),
+      sb.from('categories').select('*'),
+      sb.from('planilha_merenda_mapa').select('*')
+    ]);
+    state.items=rs[0].data||[]; state.categories=rs[1].data||[]; state.mapa=rs[2].data||[];
+  }
+  state.carregando=false;render();
+}
+
+function mapearLinhas(linhas){
+  var cats={};state.categories.forEach(function(c){cats[c.id]=c});
+  var itensCozinha=state.items.filter(function(i){return cats[i.category_id]&&cats[i.category_id].area==='cozinha'});
+  var porGenero={};state.mapa.forEach(function(m){if(m.genero_planilha)porGenero[norm(m.genero_planilha)]=m.item_id});
+  var porNome={};itensCozinha.forEach(function(i){var k=norm(i.name);if(!porNome[k])porNome[k]=i});
+  var usados={};var ok=[];var sem=[];
+  linhas.forEach(function(l){
+    var item=null;var origem='';
+    var id=porGenero[norm(l.genero_planilha)];
+    if(id&&itensCozinha.some(function(x){return x.id===id})){item=itensCozinha.filter(function(x){return x.id===id})[0];origem='mapeamento'}
+    if(!item&&porNome[norm(l.genero_planilha)]){item=porNome[norm(l.genero_planilha)];origem='nome'}
+    if(item&&!usados[item.id]){
+      usados[item.id]=true;
+      ok.push({item_id:item.id,item_nome:item.name,unidade:item.unit,qty_atual:Number(item.qty)||0,genero_planilha:l.genero_planilha,unidade_planilha:l.unidade_planilha||'',estoque_final:Number(l.estoque_final)||0,origem:origem});
+    }else if(!item){sem.push(l)}
+  });
+  state.correspondentes=ok;state.naoEncontrados=sem;
+}
+
+async function ler(){
+  state.lendo=true;state.erro='';state.dados=null;render();
+  try{
+    var hoje=new Date(),ano=hoje.getFullYear(),mes=hoje.getMonth()+1;
+    var res=await sb.functions.invoke('sync-planilha',{body:{acao:'ler-estoque-anterior',ano:ano,mes:mes}});
+    if(res.error)throw new Error(res.error.message||'Falha ao ler a planilha.');
+    var d=res.data;
+    if(d&&d.naoEncontrado)throw new Error(d.erro||'Não encontrei a planilha do mês anterior.');
+    if(!d||d.ok===false)throw new Error((d&&d.erro)||'Não foi possível ler a planilha.');
+    state.dados=d;mapearLinhas(d.itens||[]);
+  }catch(e){state.erro=e.message||String(e)}
+  state.lendo=false;render();
+}
+
+async function aplicar(){
+  if(!state.dados||!state.correspondentes.length)return;
+  var destino=state.dados.mesDestino;
+  if(!confirm('Aplicar o estoque final de '+state.dados.mesOrigem.nome+'/'+state.dados.mesOrigem.ano+' como estoque inicial de '+destino.nome+'/'+destino.ano+' para '+state.correspondentes.length+' produto(s)?'))return;
+  state.aplicando=true;state.erro='';render();
+  try{
+    var payload=state.correspondentes.map(function(x){return{item_id:x.item_id,genero_planilha:x.genero_planilha,estoque_inicial:x.estoque_final}});
+    var r=await sb.rpc('aplicar_estoque_inicial_planilha',{p_ano:destino.ano,p_mes:destino.mes,p_arquivo:state.dados.arquivo.nome,p_itens:payload});
+    if(r.error)throw r.error;
+    toast((r.data&&r.data.atualizados||payload.length)+' produto(s) atualizado(s).');
+    var itens=await sb.from('items').select('*');if(!itens.error)state.items=itens.data||[];
+    mapearLinhas(state.dados.itens||[]);
+    state.dados.aplicado=true;
+  }catch(e){state.erro=e.message||String(e)}
+  state.aplicando=false;render();
+}
+
+function render(){
+  var c=document.getElementById('conteudo');
+  if(state.carregando){c.innerHTML='<div class="form"><div class="spinner"></div><div class="muted" style="text-align:center">Carregando...</div></div>';return}
+  if(!state.admin){c.innerHTML='<div class="crit-box">Esta função é exclusiva para administradores.</div>';return}
+  var hoje=new Date(),ano=hoje.getFullYear(),mes=hoje.getMonth()+1,orig=mesAnterior(ano,mes);
+  var h='<div class="form"><div class="section-title">Estoque inicial de '+esc(NOMES_MES[mes-1])+'/'+ano+'</div>'+
+    '<div class="info-box">O sistema vai abrir a planilha de <b>'+esc(NOMES_MES[orig.mes-1])+'/'+orig.ano+'</b>, aba <b>MENSAL</b>, e considerar somente as linhas cujo <b>Estoque Final seja maior que zero</b>. Esse valor vira a base do estoque de '+esc(NOMES_MES[mes-1])+'.</div>'+
+    '<div class="muted">A importação não cria uma "Entrada" fictícia. Se já houver entradas ou saídas registradas neste mês, elas são preservadas e somadas/subtraídas da base importada.</div>'+
+    '<button class="btn btn-primary" '+(state.lendo?'disabled':'')+' onclick="ler()">'+(state.lendo?'Lendo planilha...':'Ler estoque final de '+esc(NOMES_MES[orig.mes-1]))+'</button></div>';
+  if(state.erro)h+='<div class="crit-box">'+esc(state.erro)+'</div>';
+  if(state.dados){
+    h+='<div class="form"><div class="section-title">Conferência antes de aplicar</div>'+
+      '<div class="arquivo"><b>Arquivo:</b> '+esc(state.dados.arquivo.nome)+'<br><b>Aba:</b> '+esc(state.dados.arquivo.aba)+'<br><b>Origem:</b> '+esc(state.dados.mesOrigem.nome)+'/'+state.dados.mesOrigem.ano+' &rarr; <b>Destino:</b> '+esc(state.dados.mesDestino.nome)+'/'+state.dados.mesDestino.ano+'</div>'+
+      '<div class="muted">'+state.correspondentes.length+' produto(s) encontrados no app. Produtos com Estoque Final = 0 foram ignorados.</div>';
+    state.correspondentes.forEach(function(x){h+='<div class="linha"><div><div class="nome">'+esc(x.item_nome)+'</div><div class="sub">Excel: '+esc(x.genero_planilha)+(x.origem==='nome'?' · correspondência pelo nome':' · correspondência pelo mapeamento')+'</div></div><div class="qtd">'+fmt(x.estoque_final)+' '+esc(x.unidade)+'<div class="atual">Atual no app: '+fmt(x.qty_atual)+'</div></div></div>'});
+    if(state.naoEncontrados.length){
+      h+='<div class="warn-box">'+state.naoEncontrados.length+' linha(s) da planilha não têm correspondência no app e NÃO serão importadas.</div>';
+      state.naoEncontrados.forEach(function(x){h+='<div class="linha"><div><div class="nome">'+esc(x.genero_planilha)+'</div><div class="sub">Ajuste o campo "Linha no Mapa de Merenda (Gênero)" no produto correspondente.</div></div><div class="qtd">'+fmt(x.estoque_final)+'</div></div>'});
+    }
+    if(state.dados.aplicado)h+='<div class="info-box"><b>Importação aplicada.</b> Repetir a importação é seguro: a base mensal é atualizada e as movimentações já feitas neste mês são recalculadas sobre ela.</div>';
+    h+='<button class="btn btn-primary" '+(state.aplicando||!state.correspondentes.length?'disabled':'')+' onclick="aplicar()">'+(state.aplicando?'Aplicando...':'Confirmar estoque inicial ('+state.correspondentes.length+' produtos)')+'</button>'+
+      '<button class="btn btn-ghost" '+(state.lendo?'disabled':'')+' onclick="ler()">Ler a planilha novamente</button></div>';
+  }
+  c.innerHTML=h;
+}
+init();
+</script>
+</body>
+</html>
